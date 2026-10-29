@@ -78,7 +78,7 @@ class CanonicalUser(BaseModel):
 
     @property
     def billable(self) -> bool:
-        """is_billable, or true for active/invited users when the app doesn't say."""
+        """is_billable; else true unless the app says the user is deactivated (or similar)."""
         if self.is_billable is not None:
             return self.is_billable
-        return self.status in ("active", "invited")
+        return self.status in ("unknown", "active", "invited")

@@ -187,4 +187,4 @@ def _billable(user: dict[str, Any]) -> bool:
         return bool(user["is_billable"])
     # A member the admin API lists holds a seat unless the API says otherwise; an unknown status
     # (the connector has no status field) must not make every seat look unassigned.
-    return user.get("status") in (None, "active", "invited")
+    return user.get("status") in (None, "unknown", "active", "invited")

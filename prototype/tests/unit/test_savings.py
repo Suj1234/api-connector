@@ -84,6 +84,6 @@ def test_missing_files_are_reported() -> None:
 
 def test_users_without_a_status_still_hold_seats(build_module: Callable[[dict[str, Any]], Path]) -> None:
     """An AI-drafted spec may map no status field; that must not make every seat look unassigned."""
-    users = [{**u, "status": None} for u in records("calendly", build_module)]
+    users = [{**u, "status": "unknown"} for u in records("calendly", build_module)]
     result = compute("Calendly", users, example_spec("calendly"), files("Calendly"), None, TODAY)
     assert (result.billable_users, result.never_assigned, result.needs_note) == (48, 12, False)
