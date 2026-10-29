@@ -39,6 +39,9 @@ A take-home assignment for a Senior PM role.
 - **Before creating or changing files, tell him the plan in simple words and wait for his OK.** For each milestone, list the files you will create or change, then start.
 - Keep explanations short and simple. No long theory.
 - If anything is unclear, ask. Don't assume.
+- **Never assume anything Sujeet didn't say** (for example how he'll use the prototype, who will see it, or how it will be shared). If in doubt, ask one short question first.
+- **Sharing:** Sujeet will share a **link** to the running prototype with other people. It must work as a hosted link, behind a login he controls.
+- Give one specific answer, not a list of options, unless he asks for options.
 
 ## Company name rule (important)
 
