@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd frontend && npm ci",
-  "buildCommand": "cd frontend && npm run build && cd .. && python3 -m pip install --quiet --target .tools ruff==0.17.3",
+  "buildCommand": "cd frontend && npm run build && cd .. && python3 -m pip install --quiet --target .tools --python-version 3.12 --implementation cp --platform manylinux2014_x86_64 --only-binary=:all: ruff==0.17.3 mypy==2.4.1",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },

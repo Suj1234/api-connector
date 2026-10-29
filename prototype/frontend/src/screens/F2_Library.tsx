@@ -70,7 +70,7 @@ export default function LibraryCheck() {
                 <TextInput value={docsUrl} onChange={(e) => setDocsUrl(e.target.value)} placeholder="https://developer.example.com/api" type="url" />
               </Field>
               <Field label="Or upload an OpenAPI file" help="JSON or YAML. Optional; it's read first when it's there.">
-                <input type="file" accept=".json,.yaml,.yml" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-text-subdued" />
+                <input type="file" accept=".json,.yaml,.yml" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-text-subdued file:mr-3 file:h-8 file:cursor-pointer file:rounded-sm file:border file:border-solid file:border-border-strong file:bg-surface file:px-3 file:font-sans file:font-medium file:text-text-heading hover:file:bg-surface-subdued" />
               </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">

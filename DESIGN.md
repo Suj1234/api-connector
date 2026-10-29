@@ -58,15 +58,9 @@ The people using this screen are IT admins, procurement and security reviewers. 
 
 Destructive buttons (Delete connector, Revoke token) use `--danger: #DF1B41` as the fill.
 
-### 2.4 Demo data
+### 2.4 Sample data
 
-Replay mode must never be mistaken for real data (`TRD.md` §1). A full-width bar sits above the top bar on every screen of a replay-mode tenant:
-
-| Token | Hex | Use |
-|---|---|---|
-| `--demo` | `#CC4B00` | The "Demo data: recorded responses, fake people" bar and its tag on numbers |
-
-This colour is used for nothing else.
+Replay mode must never be mistaken for real data (`TRD.md` §1), but it should not shout either. A neutral `Tag` reading "Sample data" sits beside the tenant switcher on every screen of a replay-mode tenant, and beside the numbers it affects (savings, connector detail). No extra colour.
 
 ### 2.5 Charts (savings preview, F6)
 
@@ -123,7 +117,7 @@ Each bar segment has a text label and a count beside it; colour is never the onl
 
 **Sidebar items:** App inventory, Library, Connectors, Savings. In the `internal` tenant: Review queue, Fleet health, Opportunity map.
 
-**Tenant switcher:** always visible, top left. Shows the tenant name and its run mode ("Acme · Demo data", "Globex · Live").
+**Tenant switcher:** always visible, top left. Shows the tenant name, with a "Sample data" tag beside it in replay mode.
 
 ---
 
@@ -133,7 +127,7 @@ The prototype builds only what the screens need.
 
 | Component | What it is | Where it appears |
 |---|---|---|
-| `AppShell` | Sidebar + top bar + demo bar + page area | Every screen |
+| `AppShell` | Sidebar + top bar + page area | Every screen |
 | `PageHeader` | Overline, title, status badge, actions on the right | Every screen |
 | `Button` | `primary` (navy), `secondary` (white, border), `ghost`, `danger` | Everywhere; **one primary per view**, right-most |
 | `Badge` | Tinted status with a word, optional icon | Connector status, tiers, test results |
@@ -256,7 +250,6 @@ The frontend (React + Tailwind, `TRD.md` §2) loads these CSS variables and maps
   --neutral-bg: #EBEEF1;  --neutral-fg: #414552;
 
   /* demo data */
-  --demo: #CC4B00;
 
   /* type */
   --font-sans: "IBM Plex Sans", system-ui, sans-serif;

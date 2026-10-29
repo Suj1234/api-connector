@@ -17,7 +17,6 @@ export default {
       warning: { bg: v("warning-bg"), fg: v("warning-fg") },
       info: { bg: v("info-bg"), fg: v("info-fg") },
       neutral: { bg: v("neutral-bg"), fg: v("neutral-fg") },
-      demo: v("demo"),
       chart: { left: v("chart-left"), inactive: v("chart-inactive"), never: v("chart-never"), nothr: v("chart-not-in-hr"), active: v("chart-active"), excluded: v("chart-excluded") },
     },
     fontFamily: { sans: v("font-sans"), mono: v("font-mono") },

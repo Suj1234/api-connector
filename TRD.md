@@ -30,7 +30,7 @@ Section references like "PRD §6.3" point to the PRD. Plain "§3" points to this
 - **Sandboxed test run** (all users, sampled usage), a self-repair loop (max 3), and plain error messages.
 - **UI:** screens F1–F7 (F7 without the versions diff), plus a simple **F8** with the library review queue.
 - **Two tenants** (Acme, Globex) with a tenant switcher, and an **internal** view for the platform team. **Library flow:** submit from Acme → approve in F8 → Globex connects with its own token, and its own test runs.
-- **Run modes:** `live` (real vendor API) and `replay` (recorded responses, fake people, labelled "Demo data" on every screen).
+- **Run modes:** `live` (real vendor API) and `replay` (recorded responses, fake people, labelled "Sample data" on every screen).
 - **Savings preview** using the fixture files (§11).
 - **Encrypted secrets**, one key per tenant. Secrets never in logs or prompts.
 - **Security tests:** a prompt-injection doc, a call to another host, a non-read call, SSRF on the docs fetcher, a grep for secrets.

@@ -106,7 +106,7 @@ The prototype is done when all of these pass.
 | SC-11 | Surprise app | Drafted, tested, and users shown, with no example spec and no app-specific code |
 | SC-12 | SSRF | Docs URLs pointing to `169.254.169.254`, `localhost` or `10.x` → `SSRF_BLOCKED` |
 | SC-13 | Token owner leaving | `hris.csv` marks the token owner as terminated on a future date → F7 warning "switch to a service account" |
-| SC-14 | Replay mode | Every screen shows "Demo data"; no network calls to the vendor |
+| SC-14 | Replay mode | Every screen shows "Sample data"; no network calls to the vendor |
 | SC-15 | Secrets | A grep of logs, the DB and LLM prompts finds no token, email or real name |
 | SC-16 | Benchmark | Produces the 3 × 3 × 3 results table |
 | SC-17 | Docs conflict | A fixture docs page with two rate-limit values → the conflict chip shows both and the chosen source |

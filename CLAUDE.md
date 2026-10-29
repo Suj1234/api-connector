@@ -116,7 +116,7 @@ A take-home assignment for a Senior PM role.
      - library submit → approve → connect
      - savings preview (TRD §11) from `fixtures/acme/`
      - Generated code tab
-     - "Demo data" labels in replay mode
+     - "Sample data" labels in replay mode
    - Done when:
      - the full §15 demo can be clicked through.
 7. **Polish for demo**

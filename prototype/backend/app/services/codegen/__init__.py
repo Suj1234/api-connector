@@ -67,14 +67,18 @@ def render(spec: dict[str, Any], version: int = 1) -> str:
     return format_code(code)
 
 
+TOOLS = PROTOTYPE / ".tools"  # hosted builds install complete ruff and mypy here (bundles strip parts of them)
+
+
 def _python_path() -> str:
     # On some hosts (Vercel) installed packages live outside site-packages; child processes need them too.
-    return os.pathsep.join(p for p in sys.path if p and os.path.isdir(p))
+    paths = [str(TOOLS)] if TOOLS.is_dir() else []
+    return os.pathsep.join([*paths, *(p for p in sys.path if p and os.path.isdir(p))])
 
 
 def ruff_command() -> list[str]:
     """The ruff program. Hosted bundles drop ruff's own binary, so the build installs a copy in .tools/."""
-    bundled = PROTOTYPE / ".tools" / "bin" / "ruff"
+    bundled = TOOLS / "bin" / "ruff"
     if not bundled.is_file():
         return [sys.executable, "-m", "ruff"]
     if os.access(bundled, os.X_OK):

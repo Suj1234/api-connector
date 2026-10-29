@@ -37,7 +37,7 @@ Open http://localhost:8000. Switch tenants top left:
 
 | Tenant | Runs on | Use it for |
 |---|---|---|
-| Acme · Demo data | Recorded responses, fake people (`fixtures/`) | The savings story: 48 users, 6 left, 11 inactive, $6,960 a year |
+| Acme · Sample data | Recorded responses, fake people (`fixtures/`) | The savings story: 48 users, 6 left, 11 inactive, $6,960 a year |
 | Globex · Live | The real vendor APIs, with your own tokens | Proving the code works on a real account |
 | Platform team | — | Library review queue (approve before any other tenant sees a connector) |
 
