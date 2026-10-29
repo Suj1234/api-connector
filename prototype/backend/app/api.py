@@ -205,10 +205,14 @@ def logout() -> JSONResponse:
     return response
 
 
+_state_lock = threading.Lock()
+
+
 def state() -> State:
     global _state
-    if _state is None:
-        _state = State()
+    with _state_lock:  # the first requests arrive together; only one may create the tables
+        if _state is None:
+            _state = State()
     return _state
 
 

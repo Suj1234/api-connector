@@ -21,6 +21,7 @@ from sqlalchemy import (
     create_engine,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Lifecycle statuses (PRD §8). The UI and the code use these exact values.
@@ -331,4 +332,8 @@ def make_engine(url: str = "sqlite:///./data/app.db") -> Engine:
 
 
 def init_db(engine: Engine) -> None:
-    Base.metadata.create_all(engine)
+    try:
+        Base.metadata.create_all(engine)
+    except (OperationalError, ProgrammingError, IntegrityError):
+        # Another server instance created the same tables at the same moment; check they all exist.
+        Base.metadata.create_all(engine)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -66,9 +67,23 @@ def render(spec: dict[str, Any], version: int = 1) -> str:
     return format_code(code)
 
 
+def ruff_command() -> list[str]:
+    """The ruff program. Hosted bundles drop ruff's own binary, so the build installs a copy in .tools/."""
+    bundled = PROTOTYPE / ".tools" / "bin" / "ruff"
+    if not bundled.is_file():
+        return [sys.executable, "-m", "ruff"]
+    if os.access(bundled, os.X_OK):
+        return [str(bundled)]
+    runnable = Path(tempfile.gettempdir()) / "ruff"  # the bundle can lose the execute bit
+    if not runnable.exists():
+        shutil.copy(bundled, runnable)
+        runnable.chmod(0o755)
+    return [str(runnable)]
+
+
 def format_code(code: str) -> str:
     done = subprocess.run(
-        [sys.executable, "-m", "ruff", "format", "--config", str(PYPROJECT), "-"],
+        [*ruff_command(), "format", "--config", str(PYPROJECT), "-"],
         input=code,
         capture_output=True,
         text=True,
@@ -85,7 +100,7 @@ def check_code(code: str, name: str = "connector") -> CodeCheck:
         path = Path(tmp) / f"{name}.py"
         path.write_text(code)
         ruff = subprocess.run(
-            [sys.executable, "-m", "ruff", "check", "--config", str(PYPROJECT), "--no-cache", str(path)],
+            [*ruff_command(), "check", "--config", str(PYPROJECT), "--no-cache", str(path)],
             capture_output=True,
             text=True,
             check=False,
