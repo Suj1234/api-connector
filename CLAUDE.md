@@ -130,7 +130,8 @@ A take-home assignment for a Senior PM role.
 ## Build status (29 Oct 2026)
 
 - Milestones 1, 2, 3, 5, 6 done; 7 done except the final video, which is recorded on Sujeet's Mac with Gemini on.
-- Milestone 4 (live) and the real benchmark wait on: Gemini key, test accounts, and network access to the vendor hosts.
+- Hosted at https://integration-builder-five.vercel.app (Vercel, Postgres, login on). 29 Oct: the full flow passed there with real Gemini and real docs (Calendly, sample data): build → test → savings → go live → library → second tenant.
+- Milestone 4 (live vendor APIs) and the real benchmark wait on test accounts (vendor tokens).
 - Scenario status: `EVAL.md` §6. Run steps: `prototype/README.md`. Build decisions: `TRD.md` §15.
 
 ## Rules that must not be broken
