@@ -124,9 +124,16 @@ def _login_required() -> bool:
     return bool(get("DEMO_PASSWORD"))
 
 
+def _logins() -> list[tuple[str, str]]:
+    # TEST_USERNAME / TEST_PASSWORD: an optional second login for automated end-to-end tests.
+    pairs = [(get("DEMO_USERNAME"), get("DEMO_PASSWORD")), (get("TEST_USERNAME"), get("TEST_PASSWORD"))]
+    return [(user, password) for user, password in pairs if user and password]
+
+
 def _session_key() -> bytes:
-    # Changing DEMO_PASSWORD changes the key, so every old session stops working at once.
-    return hashlib.sha256(f"{_vault_key()}|{get('DEMO_USERNAME')}|{get('DEMO_PASSWORD')}".encode()).digest()
+    # Changing (or removing) either password changes the key, so every old session stops working at once.
+    secrets = "|".join(f"{user}|{password}" for user, password in _logins())
+    return hashlib.sha256(f"{_vault_key()}|{secrets}".encode()).digest()
 
 
 def _sign(expires: int) -> str:
@@ -157,9 +164,11 @@ class Login(BaseModel):
 
 @app.post("/api/login")
 def login(body: Login, request: Request) -> JSONResponse:
-    user_ok = hmac.compare_digest(body.username.encode(), get("DEMO_USERNAME").encode())
-    password_ok = hmac.compare_digest(body.password.encode(), get("DEMO_PASSWORD").encode())
-    if not _login_required() or not (user_ok and password_ok):
+    matches = [
+        hmac.compare_digest(body.username.encode(), user.encode()) & hmac.compare_digest(body.password.encode(), password.encode())
+        for user, password in _logins()
+    ]  # fmt: skip
+    if not _login_required() or not any(matches):
         time.sleep(0.5)  # slows down password guessing
         raise HTTPException(401, "Wrong username or password")
     response = JSONResponse({"logged_in": True})

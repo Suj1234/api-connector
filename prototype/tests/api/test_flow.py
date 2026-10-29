@@ -221,6 +221,18 @@ def test_login_locks_every_api_call(client: TestClient, monkeypatch: pytest.Monk
     assert client.get("/api/inventory", headers=ACME).status_code == 401
 
 
+def test_test_login_works_until_it_is_removed(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_USERNAME", "panel")
+    monkeypatch.setenv("DEMO_PASSWORD", "interview-pass-1")
+    monkeypatch.setenv("TEST_USERNAME", "e2e")
+    monkeypatch.setenv("TEST_PASSWORD", "e2e-pass-1")
+    assert client.post("/api/login", json={"username": "e2e", "password": "interview-pass-1"}).status_code == 401
+    assert client.post("/api/login", json={"username": "e2e", "password": "e2e-pass-1"}).status_code == 200
+    assert client.get("/api/inventory", headers=ACME).status_code == 200
+    monkeypatch.delenv("TEST_PASSWORD")
+    assert client.get("/api/inventory", headers=ACME).status_code == 401
+
+
 def test_no_login_when_no_password_is_set(client: TestClient) -> None:
     assert client.get("/api/session").json()["required"] is False
     assert client.get("/api/inventory", headers=ACME).status_code == 200
