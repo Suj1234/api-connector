@@ -1,0 +1,2614 @@
+{
+ "app": "calendly",
+ "recorded_at": "2026-10-29T09:00:00.000000Z",
+ "variables": {},
+ "interactions": [
+  {
+   "method": "GET",
+   "url": "https://api.calendly.com/users/me",
+   "query": {},
+   "body": {
+    "resource": {
+     "uri": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+     "name": "Diego Moreau",
+     "email": "diego.moreau@acme.example",
+     "current_organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://api.calendly.com/organization_memberships",
+   "query": {
+    "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
+    "count": "100"
+   },
+   "body": {
+    "collection": [
+     {
+      "uri": "https://api.calendly.com/organization_memberships/5073ac80-b575-58e2-a6be-3bf62b7f0fea",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/5739111f-e53d-5e94-85fe-efea9d2f48a4",
+       "name": "Rhea Kaur",
+       "email": "RHEA.KAUR@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/f94f3c62-ba51-5efd-b31e-c9d9035205f6",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/d9343485-4f9e-5cfb-80df-732ba9bf2abe",
+       "name": "Maya Castillo",
+       "email": "maya.castillo@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/4ebc68df-59d5-5d0b-8b1f-584bdc917bab",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/0b71ecb1-0a5c-56b1-b086-12875fdf8208",
+       "name": "Anika Duarte",
+       "email": "anika.duarte@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/2fa8b2bb-45f6-52c1-9106-7e4f2dcb1cd6",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/1bb808db-5104-5d4f-9ae9-188ab5bf2863",
+       "name": "Milo Rossi",
+       "email": "milo.rossi@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/812d7f9a-23d5-5119-be3c-0489259106a7",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/dfd89abf-3ad6-53f7-950d-6839b90375be",
+       "name": "Uma Okafor",
+       "email": "uma.okafor@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/95d67ae7-2874-59fd-8f28-47f8eab220ed",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/66fb8dcb-77f5-5f3e-a554-de42e221e594",
+       "name": "Lara Ito",
+       "email": "lara.ito@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/e954143e-22c6-52e5-82e5-5d47b2cccf62",
+      "role": "admin",
+      "user": {
+       "uri": "https://api.calendly.com/users/7b7f5790-a287-5cf5-a09d-ca20668f6527",
+       "name": "Arlo Duarte",
+       "email": "arlo.duarte@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/68bd5386-adca-58b0-b7fc-32219df59964",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/b63c18e3-370b-5d5b-82ef-526fbc35c3cb",
+       "name": "Ines Xu",
+       "email": "ines.xu@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/ebdcf782-a848-5c4f-a02c-5c7cced6f327",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/9dd6a667-467c-5a3a-ac76-71afab3059a6",
+       "name": "Emeka Brandt",
+       "email": "emeka.brandt@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/9a65dca5-740b-53ea-9b8e-2359c2ec7e71",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/0e60fba4-e999-56fb-b447-170cbe755088",
+       "name": "Ivy Eze",
+       "email": "IVY.EZE@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/b822b352-cbd6-509e-85cc-39333d0c0937",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/8fad98f3-deed-5e8d-a0a6-76f8951ab664",
+       "name": "Ada Ivanova",
+       "email": "ada.ivanova@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/0a45b394-c7b0-5c6d-bb80-e1f2bdddb9c7",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/8e65fa5f-9a91-5217-87e6-a13ec9dcda08",
+       "name": "Bilal Abara",
+       "email": "bilal.abara@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/1eea1cb9-411a-5c88-b156-9d49580a7d9b",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/79a6c10d-6be8-5fc7-821d-434feb77a761",
+       "name": "Nico Holm",
+       "email": "nico.holm@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/2b9be89c-cc39-5f0f-a3e3-5d4c1ca90082",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/186fddd9-8d6b-5f96-8db3-457e8c75e172",
+       "name": "Zeke Duarte",
+       "email": "zeke.duarte@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/3df6dc7d-de5e-5fc0-baa9-9cec23d3914f",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/e792067d-95b8-559f-9e65-42be0174a9ed",
+       "name": "Ines Fontaine",
+       "email": "ines.fontaine@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/300720b1-52d4-5887-880c-33dd5dc767e1",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/777df441-3169-5a7d-8995-866e74b04646",
+       "name": "Pablo Ueda",
+       "email": "pablo.ueda@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/80582fd8-b1cd-5f5a-bf3b-35e273fd894d",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/305aff11-f6bf-5281-b4aa-a919f8692de9",
+       "name": "Wren Garcia",
+       "email": "wren.garcia@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/497463f5-7e0d-52d5-8cab-e4b222f5f3e3",
+      "role": "owner",
+      "user": {
+       "uri": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+       "name": "Diego Moreau",
+       "email": "diego.moreau@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/940d61ad-3193-5fa1-a6ec-0a8cde720359",
+      "role": "admin",
+      "user": {
+       "uri": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+       "name": "Elio Gupta",
+       "email": "ELIO.GUPTA@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/4bec07b8-a102-5185-ae25-ab4a95776641",
+      "role": "admin",
+      "user": {
+       "uri": "https://api.calendly.com/users/a9590190-34e5-5aae-bd78-b90edf4d6a2d",
+       "name": "Yara Bauer",
+       "email": "yara.bauer@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/a55dde30-e410-5b89-b794-720a356cac36",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/47fda504-2d15-571a-b491-8523be02da85",
+       "name": "Diego Kaur",
+       "email": "diego.kaur@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/72471556-d4b1-5cc6-b115-a5e7ebb1a00e",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/b927722d-3dee-5c63-8c12-e03fb9aeb76d",
+       "name": "Alba Holm",
+       "email": "alba.holm@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/63d94b58-0046-561a-a886-85eabf6a6e1b",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/ccede225-92fb-55fc-b9e4-741f4f684c5f",
+       "name": "Nadia Yilmaz",
+       "email": "nadia.yilmaz@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/c1d59478-c7ec-5b4c-829a-f6665bd6809c",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/f35961d2-f7b2-5167-9407-bf5645ae2ba4",
+       "name": "Eitan Varga",
+       "email": "eitan.varga@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/cb38c8fe-0b8a-5599-aeb8-344a411a762a",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/2638c016-1f6c-5f5a-b621-d5de039f186b",
+       "name": "Leila Xu",
+       "email": "leila.xu@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     }
+    ],
+    "pagination": {
+     "count": 25,
+     "next_page_token": "cursor-organization_memberships-1"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://api.calendly.com/organization_memberships",
+   "query": {
+    "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
+    "count": "100",
+    "page_token": "cursor-organization_memberships-1"
+   },
+   "body": {
+    "collection": [
+     {
+      "uri": "https://api.calendly.com/organization_memberships/cdfcc763-36d0-5852-99e0-5de1f072a274",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+       "name": "Dara Weber",
+       "email": "dara.weber@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/2781de35-0c68-5c04-9231-d0c9353f3aa5",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+       "name": "Zeke Holm",
+       "email": "zeke.holm@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/110a3d64-513a-593e-ab91-61c4f6cdb9bd",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/88f25c58-dc09-524c-aae3-e9a9fa206a16",
+       "name": "Aarav Fontaine",
+       "email": "AARAV.FONTAINE@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/68ade9ee-506d-5a8e-af21-daa5d9f78cf9",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/a291d574-7638-53b5-9da3-13c7f583e133",
+       "name": "Leila Larsen",
+       "email": "leila.larsen@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/aff9f273-3187-5498-8765-675cfb45544a",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+       "name": "Soren Dahl",
+       "email": "soren.dahl@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/d1f9dd6f-1e4c-5bae-8141-e351a1b540ae",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+       "name": "Mei Petrov",
+       "email": "mei.petrov@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/e868e3a5-159e-5a94-9161-bddea35175d1",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/7cceb113-d2de-55c4-924c-3500e5c4fdf3",
+       "name": "Anika Holm",
+       "email": "anika.holm@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/841b5c41-4743-5ab7-add0-3a714456daae",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+       "name": "Alma Gupta",
+       "email": "alma.gupta@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/0d0b1c7f-dc8b-5b5b-b9a1-3b96c2da02e7",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+       "name": "Uma Yilmaz",
+       "email": "uma.yilmaz@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/6cec5336-87e7-577c-bd92-30606723fe78",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+       "name": "Femi Duarte",
+       "email": "femi.duarte@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/a72b7d44-c5c0-5c48-a2e9-240ed493c7d1",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+       "name": "Beatriz Jensen",
+       "email": "beatriz.jensen@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/b642e3ad-3506-54bf-8378-e5ca0257ccd6",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+       "name": "Kai Garcia",
+       "email": "KAI.GARCIA@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/e5e2b698-0160-5772-b623-9bb7ed2930e4",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/af2addb9-628f-5893-afa0-0cd0f542390d",
+       "name": "Nadia Larsen",
+       "email": "nadia.larsen@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/46fb8ddf-9ea5-5fff-96de-f1b0f7d1ca1d",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/62dff10e-13e1-5902-98ec-aebef602b639",
+       "name": "Diego Yilmaz",
+       "email": "diego.yilmaz@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/975ace2c-6c51-579c-a404-fc89f9179eac",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+       "name": "Emeka Chen",
+       "email": "emeka.chen@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/ab38520e-8438-5be9-ab8c-dcf73d976484",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+       "name": "Noor Sato",
+       "email": "noor.sato@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/6c0c6a30-17b6-5fcf-89cb-5810ffea11df",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/31a2973a-af8c-544a-b325-4949edec6448",
+       "name": "Bo Moreau",
+       "email": "bo.moreau@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/340895bb-1a4f-508c-aa81-017300e55d4d",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/242b2803-521d-5a28-93af-4be745bf0a84",
+       "name": "Oona Petrov",
+       "email": "oona.petrov@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/8da6f175-0b2c-5251-a202-94e24ec64f0b",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+       "name": "Eitan Sato",
+       "email": "eitan.sato@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/f0b947fd-3e4e-5e60-8228-4495f862090f",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+       "name": "Ines Eze",
+       "email": "ines.eze@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/08552493-096b-5cb0-9a13-422d266c28e0",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+       "name": "Aziz Bauer",
+       "email": "AZIZ.BAUER@ACME.EXAMPLE"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/4952cedc-daf1-50ef-b83d-4914d057c7ac",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+       "name": "Aziz Dahl",
+       "email": "aziz.dahl@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     },
+     {
+      "uri": "https://api.calendly.com/organization_memberships/0ec41eb9-6e6b-5056-9805-42630d752a9e",
+      "role": "user",
+      "user": {
+       "uri": "https://api.calendly.com/users/7c06ee4d-28a7-5f93-9008-7d3e6239eda0",
+       "name": "Leila Haddad",
+       "email": "leila.haddad@acme.example"
+      },
+      "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8"
+     }
+    ],
+    "pagination": {
+     "count": 23,
+     "next_page_token": null
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://api.calendly.com/scheduled_events",
+   "query": {
+    "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
+    "min_start_time": "*",
+    "max_start_time": "*",
+    "status": "active",
+    "count": "100"
+   },
+   "body": {
+    "collection": [
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7e234d2a-ab37-5f04-8448-c48e13adf86f",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-07-26T09:00:00.000000Z",
+      "end_time": "2026-07-26T09:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/9dd6a667-467c-5a3a-ac76-71afab3059a6",
+        "user_email": "emeka.brandt@acme.example",
+        "user_name": "Emeka Brandt"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/f52f686d-a774-53cb-ba82-7add8cfd095c",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-01T01:00:00.000000Z",
+      "end_time": "2026-08-01T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7bd3df9e-4056-5f5c-8d57-88b71e807356",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-01T07:30:00.000000Z",
+      "end_time": "2026-08-01T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       },
+       {
+        "user": "https://api.calendly.com/users/ccede225-92fb-55fc-b9e4-741f4f684c5f",
+        "user_email": "nadia.yilmaz@acme.example",
+        "user_name": "Nadia Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/fe95ef53-b856-5f1c-b1f9-87cf9aac8eee",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-02T04:30:00.000000Z",
+      "end_time": "2026-08-02T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/47fda504-2d15-571a-b491-8523be02da85",
+        "user_email": "diego.kaur@acme.example",
+        "user_name": "Diego Kaur"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/306fff8c-53ef-5b40-9667-51689a8588a5",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-03T03:00:00.000000Z",
+      "end_time": "2026-08-03T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/86161b2c-89e7-5204-be50-caf830a592a9",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-03T03:30:00.000000Z",
+      "end_time": "2026-08-03T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/dad1dc4b-7a07-5513-8b62-ac726cec7894",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-03T07:30:00.000000Z",
+      "end_time": "2026-08-03T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/ce3ab192-7ba2-54c1-a399-64dd5608f5b8",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-05T02:00:00.000000Z",
+      "end_time": "2026-08-05T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7c06ee4d-28a7-5f93-9008-7d3e6239eda0",
+        "user_email": "leila.haddad@acme.example",
+        "user_name": "Leila Haddad"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/e1fc18ac-ce92-5084-a5b5-bf9fbe8c74ac",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-07T00:00:00.000000Z",
+      "end_time": "2026-08-07T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/bf1562c9-9661-5401-ad12-c2d6e97f49d4",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-07T07:30:00.000000Z",
+      "end_time": "2026-08-07T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7c06ee4d-28a7-5f93-9008-7d3e6239eda0",
+        "user_email": "leila.haddad@acme.example",
+        "user_name": "Leila Haddad"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/ec5845be-6316-5d59-88b3-c0608693d6b0",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-08T00:00:00.000000Z",
+      "end_time": "2026-08-08T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+        "user_email": "dara.weber@acme.example",
+        "user_name": "Dara Weber"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c71a2512-1507-5317-9e25-cdd611c992f5",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-09T03:30:00.000000Z",
+      "end_time": "2026-08-09T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/198f5ac3-f67b-525c-8d86-c8728a399bf7",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-11T00:30:00.000000Z",
+      "end_time": "2026-08-11T01:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62dff10e-13e1-5902-98ec-aebef602b639",
+        "user_email": "diego.yilmaz@acme.example",
+        "user_name": "Diego Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/1cad5a9a-14bb-5e5a-b84f-bf81cf024cd7",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-11T04:30:00.000000Z",
+      "end_time": "2026-08-11T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/cdb0d796-2c58-50e2-baa4-a07181fa7542",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-11T05:30:00.000000Z",
+      "end_time": "2026-08-11T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+        "user_email": "femi.duarte@acme.example",
+        "user_name": "Femi Duarte"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/79a3df6c-b12f-56c2-854a-b6a686dd136d",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-12T04:30:00.000000Z",
+      "end_time": "2026-08-12T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+        "user_email": "femi.duarte@acme.example",
+        "user_name": "Femi Duarte"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/4c278dc4-f90b-5311-a427-089bfed5138c",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-13T04:30:00.000000Z",
+      "end_time": "2026-08-13T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/88f25c58-dc09-524c-aae3-e9a9fa206a16",
+        "user_email": "aarav.fontaine@acme.example",
+        "user_name": "Aarav Fontaine"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/85668bdb-0259-53da-bab8-3bbc7a520b03",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-13T04:30:00.000000Z",
+      "end_time": "2026-08-13T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/649294d5-8bb9-5387-8df5-8c4252df59cf",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-15T00:30:00.000000Z",
+      "end_time": "2026-08-15T01:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/31a2973a-af8c-544a-b325-4949edec6448",
+        "user_email": "bo.moreau@acme.example",
+        "user_name": "Bo Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/15a2332e-0433-5a63-89e7-a9128ea4adc6",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-15T01:30:00.000000Z",
+      "end_time": "2026-08-15T02:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/d7bfbade-013e-5368-8759-8694e8bcff3a",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-15T02:00:00.000000Z",
+      "end_time": "2026-08-15T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/242b2803-521d-5a28-93af-4be745bf0a84",
+        "user_email": "oona.petrov@acme.example",
+        "user_name": "Oona Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/964e415f-1f41-5d8f-9238-f578c95d6bb1",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-15T03:00:00.000000Z",
+      "end_time": "2026-08-15T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/84021eba-50f7-5c20-a437-bed5cc0715e0",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-15T06:30:00.000000Z",
+      "end_time": "2026-08-15T07:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2638c016-1f6c-5f5a-b621-d5de039f186b",
+        "user_email": "leila.xu@acme.example",
+        "user_name": "Leila Xu"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/768742fd-7795-5f7c-889c-522df9af0770",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-16T06:00:00.000000Z",
+      "end_time": "2026-08-16T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/a291d574-7638-53b5-9da3-13c7f583e133",
+        "user_email": "leila.larsen@acme.example",
+        "user_name": "Leila Larsen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/23b62967-1482-5767-b9e4-f39dcff3e959",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-17T01:00:00.000000Z",
+      "end_time": "2026-08-17T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/5f879c9a-d2e8-53da-9292-b6082a0e5ba1",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-17T06:00:00.000000Z",
+      "end_time": "2026-08-17T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a5d166da-3dcc-58c5-97e7-52843baa8801",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-18T03:00:00.000000Z",
+      "end_time": "2026-08-18T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6e4dae39-b747-5af2-8d7c-d5f6c8c050b8",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-18T07:30:00.000000Z",
+      "end_time": "2026-08-18T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+        "user_email": "aziz.dahl@acme.example",
+        "user_name": "Aziz Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/1d587e48-4943-5e08-82ab-da46ba41cf24",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-19T01:00:00.000000Z",
+      "end_time": "2026-08-19T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/10b0a309-0efe-5530-afbd-70cfeca58698",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-19T01:30:00.000000Z",
+      "end_time": "2026-08-19T02:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/d6a7d91f-3c0d-5b9b-bc08-1f2bd6627f48",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-19T01:30:00.000000Z",
+      "end_time": "2026-08-19T02:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/242b2803-521d-5a28-93af-4be745bf0a84",
+        "user_email": "oona.petrov@acme.example",
+        "user_name": "Oona Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6daa5fc9-8d11-556e-82ef-53cc163e3552",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-19T03:30:00.000000Z",
+      "end_time": "2026-08-19T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/99cd7dcf-89ff-5295-9702-5c5d6823929a",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-19T07:30:00.000000Z",
+      "end_time": "2026-08-19T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a3113dc0-6a3e-56b3-9ddf-0228e25628e9",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-19T08:30:00.000000Z",
+      "end_time": "2026-08-19T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/b89b4c8f-3476-5956-85b4-8ceffefae766",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-20T00:30:00.000000Z",
+      "end_time": "2026-08-20T01:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/54ea1de7-66c9-53a0-a720-007222ca095e",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-20T03:30:00.000000Z",
+      "end_time": "2026-08-20T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/fd2ee79f-4e78-598c-bab8-547f541243dd",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-20T08:00:00.000000Z",
+      "end_time": "2026-08-20T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/af5bfcab-63ba-5cba-b8e4-ab9de2ab9e51",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-22T03:30:00.000000Z",
+      "end_time": "2026-08-22T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7ae5aa74-64fe-5427-b993-13fd25977b1e",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-22T07:00:00.000000Z",
+      "end_time": "2026-08-22T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a6861d07-5b2c-5f98-9e93-69fe9c4425d2",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-23T23:30:00.000000Z",
+      "end_time": "2026-08-24T00:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/5739111f-e53d-5e94-85fe-efea9d2f48a4",
+        "user_email": "rhea.kaur@acme.example",
+        "user_name": "Rhea Kaur"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/de6fd079-39bf-5445-b728-11e30b484189",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-24T03:00:00.000000Z",
+      "end_time": "2026-08-24T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7060510a-5c88-544f-8ef3-51deb4c64bdd",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-26T01:30:00.000000Z",
+      "end_time": "2026-08-26T02:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/af2addb9-628f-5893-afa0-0cd0f542390d",
+        "user_email": "nadia.larsen@acme.example",
+        "user_name": "Nadia Larsen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/4cd87b76-5294-5a54-a55e-1dd9203f7ce2",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-26T02:30:00.000000Z",
+      "end_time": "2026-08-26T03:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/07a3503e-a0d5-541c-ac84-559b836c4aa6",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-26T05:30:00.000000Z",
+      "end_time": "2026-08-26T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/d9343485-4f9e-5cfb-80df-732ba9bf2abe",
+        "user_email": "maya.castillo@acme.example",
+        "user_name": "Maya Castillo"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/2bf2725c-2a30-583a-a371-7ce679955152",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-08-28T08:00:00.000000Z",
+      "end_time": "2026-08-28T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/05281eb9-c606-5784-9351-3afc781136d8",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-08-28T08:30:00.000000Z",
+      "end_time": "2026-08-28T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/20cef505-184c-5bd9-9111-1ab22a1bff9d",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-08-29T00:30:00.000000Z",
+      "end_time": "2026-08-29T01:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f35961d2-f7b2-5167-9407-bf5645ae2ba4",
+        "user_email": "eitan.varga@acme.example",
+        "user_name": "Eitan Varga"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/462276fe-e529-5dde-848a-d4a16bab7a62",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-08-30T00:00:00.000000Z",
+      "end_time": "2026-08-30T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/0c0beb5d-d08f-562d-b33d-61f25f26276b",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-30T06:00:00.000000Z",
+      "end_time": "2026-08-30T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ccede225-92fb-55fc-b9e4-741f4f684c5f",
+        "user_email": "nadia.yilmaz@acme.example",
+        "user_name": "Nadia Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6027fc62-fc24-5535-bd8a-8fa66062d40f",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-08-30T07:30:00.000000Z",
+      "end_time": "2026-08-30T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/abfb1f8f-6141-5a2f-b517-bd9e19e9e04a",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-09-01T00:00:00.000000Z",
+      "end_time": "2026-09-01T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+        "user_email": "ines.eze@acme.example",
+        "user_name": "Ines Eze"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/bf6249b0-5d32-5457-bac3-ba7a46e0e711",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-01T01:00:00.000000Z",
+      "end_time": "2026-09-01T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7af81029-bd2a-5573-8d02-173163238333",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-09-01T02:30:00.000000Z",
+      "end_time": "2026-09-01T03:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b927722d-3dee-5c63-8c12-e03fb9aeb76d",
+        "user_email": "alba.holm@acme.example",
+        "user_name": "Alba Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/2a4e467b-8699-5512-80b5-5598d10f43b3",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-03T01:00:00.000000Z",
+      "end_time": "2026-09-03T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/cff48ac8-4ba5-5636-947f-1d90c9656078",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-04T05:00:00.000000Z",
+      "end_time": "2026-09-04T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/afde54f2-de78-5ec5-b272-f802bdf741d3",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-05T01:00:00.000000Z",
+      "end_time": "2026-09-05T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       },
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/cfc43374-77e1-534d-8fc5-99f0c6ff174e",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-05T01:30:00.000000Z",
+      "end_time": "2026-09-05T02:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+        "user_email": "femi.duarte@acme.example",
+        "user_name": "Femi Duarte"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/1c5fa0a7-e66d-587a-95f6-ce01d621b981",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-05T02:30:00.000000Z",
+      "end_time": "2026-09-05T03:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/599ad167-530c-5e37-bd14-c42003aee607",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-06T08:30:00.000000Z",
+      "end_time": "2026-09-06T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+        "user_email": "aziz.dahl@acme.example",
+        "user_name": "Aziz Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/3a616b6b-d424-5c46-b588-de455272df1a",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-09-07T06:30:00.000000Z",
+      "end_time": "2026-09-07T07:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/31a2973a-af8c-544a-b325-4949edec6448",
+        "user_email": "bo.moreau@acme.example",
+        "user_name": "Bo Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a1a166c1-6ef3-536b-b6bb-76f100571230",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-08T04:00:00.000000Z",
+      "end_time": "2026-09-08T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/ca640aec-0e65-54a7-87c7-02baf68a7b01",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-11T02:00:00.000000Z",
+      "end_time": "2026-09-11T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/079b4ad9-2679-55d1-bc41-3557426dff70",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-11T06:00:00.000000Z",
+      "end_time": "2026-09-11T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a920875b-6f52-5edd-9b9d-4fae6ff3f2fe",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-11T07:00:00.000000Z",
+      "end_time": "2026-09-11T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/91459643-b074-5557-aa66-9484bcbcf050",
+        "user_email": "eitan.sato@acme.example",
+        "user_name": "Eitan Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/fe907bd8-ecf6-5f61-9ec9-c7dd6d2d6e2e",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-13T07:00:00.000000Z",
+      "end_time": "2026-09-13T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c117c0b4-09d7-5185-9e95-ac1f31b42bf4",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-13T08:00:00.000000Z",
+      "end_time": "2026-09-13T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/242b2803-521d-5a28-93af-4be745bf0a84",
+        "user_email": "oona.petrov@acme.example",
+        "user_name": "Oona Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/88eee1cb-d8e4-5b9a-a90c-f199f83f73db",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-14T03:00:00.000000Z",
+      "end_time": "2026-09-14T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/88f25c58-dc09-524c-aae3-e9a9fa206a16",
+        "user_email": "aarav.fontaine@acme.example",
+        "user_name": "Aarav Fontaine"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/ea8fb236-de53-5612-9659-a8056ff1900e",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-14T05:00:00.000000Z",
+      "end_time": "2026-09-14T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/acf7dc69-ae99-5922-9bdd-14a506e40baa",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-14T23:30:00.000000Z",
+      "end_time": "2026-09-15T00:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/799d87b3-b70f-5bbd-a38a-821355b74052",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-15T07:30:00.000000Z",
+      "end_time": "2026-09-15T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+        "user_email": "ines.eze@acme.example",
+        "user_name": "Ines Eze"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/2c3e4fb7-c99c-541d-9c74-563bfe914212",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-16T08:30:00.000000Z",
+      "end_time": "2026-09-16T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/31a2973a-af8c-544a-b325-4949edec6448",
+        "user_email": "bo.moreau@acme.example",
+        "user_name": "Bo Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/0ac7b1f5-0ef1-5672-b232-78b6a597a92f",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-16T09:00:00.000000Z",
+      "end_time": "2026-09-16T09:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7600c6d6-a8ab-5e3e-ab97-8887259247e1",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-18T05:30:00.000000Z",
+      "end_time": "2026-09-18T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/2da5bcb1-f8ff-5c54-8416-6f77eaf8bc51",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-19T04:00:00.000000Z",
+      "end_time": "2026-09-19T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/3d5aaa09-13f1-5dac-982f-2a41d5cfa3a5",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-19T08:30:00.000000Z",
+      "end_time": "2026-09-19T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/84bdde31-47df-59db-b7b8-2fc364604ffb",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-20T02:00:00.000000Z",
+      "end_time": "2026-09-20T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/d9670909-faf1-582b-9cfb-5a17c004a077",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-20T08:00:00.000000Z",
+      "end_time": "2026-09-20T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/e6a2da44-efaf-5812-8146-488688b71d61",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-21T07:00:00.000000Z",
+      "end_time": "2026-09-21T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/88f25c58-dc09-524c-aae3-e9a9fa206a16",
+        "user_email": "aarav.fontaine@acme.example",
+        "user_name": "Aarav Fontaine"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/e4619fc0-4573-5db7-b66a-2705a52a08e1",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-21T07:30:00.000000Z",
+      "end_time": "2026-09-21T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7520af99-beb5-524d-b76e-70614a89a408",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-22T05:00:00.000000Z",
+      "end_time": "2026-09-22T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/d1e2de81-510d-5df4-b17b-1e68c6659271",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-23T04:30:00.000000Z",
+      "end_time": "2026-09-23T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       },
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/792dd6f6-4293-549a-868f-f1eda9252708",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-23T06:30:00.000000Z",
+      "end_time": "2026-09-23T07:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+        "user_email": "dara.weber@acme.example",
+        "user_name": "Dara Weber"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/afbecc84-d0b6-5760-b292-7dd75c9b9d4d",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-23T07:30:00.000000Z",
+      "end_time": "2026-09-23T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/351813fb-ea82-5939-96bf-d60091edc8f7",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-24T06:30:00.000000Z",
+      "end_time": "2026-09-24T07:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b0a9edcc-1c18-538e-bb57-72665b0c3073",
+        "user_email": "elio.gupta@acme.example",
+        "user_name": "Elio Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/856bfb72-aec8-56d7-a3d5-e1aa5ead2a24",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-24T08:30:00.000000Z",
+      "end_time": "2026-09-24T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/31a2973a-af8c-544a-b325-4949edec6448",
+        "user_email": "bo.moreau@acme.example",
+        "user_name": "Bo Moreau"
+       },
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/a11f2e01-a700-5bfa-9987-89eb07d42c83",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-24T09:00:00.000000Z",
+      "end_time": "2026-09-24T09:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b927722d-3dee-5c63-8c12-e03fb9aeb76d",
+        "user_email": "alba.holm@acme.example",
+        "user_name": "Alba Holm"
+       },
+       {
+        "user": "https://api.calendly.com/users/a291d574-7638-53b5-9da3-13c7f583e133",
+        "user_email": "leila.larsen@acme.example",
+        "user_name": "Leila Larsen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/ee335e73-5f24-53e1-bd41-48f5dc5f3fc5",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-25T05:00:00.000000Z",
+      "end_time": "2026-09-25T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/e57fc359-317b-5dc9-b675-080a55a1e87b",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-26T02:00:00.000000Z",
+      "end_time": "2026-09-26T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+        "user_email": "aziz.dahl@acme.example",
+        "user_name": "Aziz Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c7675cf5-2dc4-5c59-ad13-914f06567e3f",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-09-26T04:30:00.000000Z",
+      "end_time": "2026-09-26T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       },
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6c847467-47ca-58ed-819d-4ea70a0dd55e",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-26T05:00:00.000000Z",
+      "end_time": "2026-09-26T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/3bc47e38-95aa-59f4-a143-260b9de70d3d",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-28T02:00:00.000000Z",
+      "end_time": "2026-09-28T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/d94e0f09-369d-5c8c-b450-3c279cf23619",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-09-28T04:30:00.000000Z",
+      "end_time": "2026-09-28T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/71759d4f-5ce9-538b-bf82-4df7f38aa240",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-28T06:00:00.000000Z",
+      "end_time": "2026-09-28T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ccede225-92fb-55fc-b9e4-741f4f684c5f",
+        "user_email": "nadia.yilmaz@acme.example",
+        "user_name": "Nadia Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/e10aee05-a82a-5f70-afd6-d1dee3d13507",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-28T07:30:00.000000Z",
+      "end_time": "2026-09-28T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/47fda504-2d15-571a-b491-8523be02da85",
+        "user_email": "diego.kaur@acme.example",
+        "user_name": "Diego Kaur"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/9ab81e56-b648-5ed2-a3e0-17543250982f",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-09-28T07:30:00.000000Z",
+      "end_time": "2026-09-28T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/a291d574-7638-53b5-9da3-13c7f583e133",
+        "user_email": "leila.larsen@acme.example",
+        "user_name": "Leila Larsen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/0bfbfae8-01c6-5042-8910-29bdf3e02d06",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-09-29T01:00:00.000000Z",
+      "end_time": "2026-09-29T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7cceb113-d2de-55c4-924c-3500e5c4fdf3",
+        "user_email": "anika.holm@acme.example",
+        "user_name": "Anika Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/fec57944-2b92-5bef-974a-dbefef86a27f",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-29T01:00:00.000000Z",
+      "end_time": "2026-09-29T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62dff10e-13e1-5902-98ec-aebef602b639",
+        "user_email": "diego.yilmaz@acme.example",
+        "user_name": "Diego Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/74f3ac41-d7c6-55bb-8196-8d6602cc8500",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-29T04:00:00.000000Z",
+      "end_time": "2026-09-29T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/2bfeb667-1c42-516d-8ac9-13e232be755c",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-09-29T05:00:00.000000Z",
+      "end_time": "2026-09-29T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/464b2390-77b3-5155-99f1-bfebe5d538e4",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-09-30T23:30:00.000000Z",
+      "end_time": "2026-10-01T00:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     }
+    ],
+    "pagination": {
+     "count": 100,
+     "next_page_token": "cursor-scheduled_events-1"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://api.calendly.com/scheduled_events",
+   "query": {
+    "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
+    "min_start_time": "*",
+    "max_start_time": "*",
+    "status": "active",
+    "count": "100",
+    "page_token": "cursor-scheduled_events-1"
+   },
+   "body": {
+    "collection": [
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6397f851-d288-5e36-9973-5087e7e29543",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-01T08:00:00.000000Z",
+      "end_time": "2026-10-01T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/3ef11da0-0f7c-51f9-a3d3-f3d53b75c009",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-02T02:30:00.000000Z",
+      "end_time": "2026-10-02T03:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/8653d637-5966-53b1-b0ca-831efc814169",
+        "user_email": "uma.yilmaz@acme.example",
+        "user_name": "Uma Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/44e0361f-8406-5080-bb69-92ff0cf1fb86",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-02T05:30:00.000000Z",
+      "end_time": "2026-10-02T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/45c0b003-4618-5136-ae36-b99c8548dd79",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-02T08:00:00.000000Z",
+      "end_time": "2026-10-02T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/acff08f4-a39c-5bb0-8118-f8493e8b4a56",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-03T05:00:00.000000Z",
+      "end_time": "2026-10-03T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/67662b8b-c04a-51e6-a28b-3726dd240fc9",
+        "user_email": "noor.sato@acme.example",
+        "user_name": "Noor Sato"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/dfffcb38-f147-5443-a771-23b147997747",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-04T04:00:00.000000Z",
+      "end_time": "2026-10-04T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62715476-5f89-54ba-9322-619ff801d6ca",
+        "user_email": "diego.moreau@acme.example",
+        "user_name": "Diego Moreau"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c39bb18f-e020-5dd9-970a-ad72a07fc006",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-05T07:00:00.000000Z",
+      "end_time": "2026-10-05T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+        "user_email": "aziz.dahl@acme.example",
+        "user_name": "Aziz Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/998a8fb5-b7f0-580e-89d1-aa7b5d74b15f",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-06T04:00:00.000000Z",
+      "end_time": "2026-10-06T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+        "user_email": "femi.duarte@acme.example",
+        "user_name": "Femi Duarte"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/90445c5c-4aeb-50aa-951c-6612fc5c4a2a",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-07T02:00:00.000000Z",
+      "end_time": "2026-10-07T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/598c4bf9-5782-5fb6-ad0a-e0741305ff83",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-07T04:30:00.000000Z",
+      "end_time": "2026-10-07T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/62dff10e-13e1-5902-98ec-aebef602b639",
+        "user_email": "diego.yilmaz@acme.example",
+        "user_name": "Diego Yilmaz"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/4a61c297-ae71-5821-a509-8276a4c82063",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-07T06:30:00.000000Z",
+      "end_time": "2026-10-07T07:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/88f25c58-dc09-524c-aae3-e9a9fa206a16",
+        "user_email": "aarav.fontaine@acme.example",
+        "user_name": "Aarav Fontaine"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/16d85500-985b-5684-91cc-78da8c67ba93",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-08T05:00:00.000000Z",
+      "end_time": "2026-10-08T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/60ad1ee4-9062-5155-b2a5-b2178f283063",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-11T23:30:00.000000Z",
+      "end_time": "2026-10-12T00:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/f7f440ac-be3a-5771-b07c-65b4483adb9a",
+        "user_email": "aziz.dahl@acme.example",
+        "user_name": "Aziz Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/3c9443f2-b97d-5033-8ba0-869401256f24",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-12T02:00:00.000000Z",
+      "end_time": "2026-10-12T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/33916b04-fa34-59c4-9461-db7712662e58",
+        "user_email": "femi.duarte@acme.example",
+        "user_name": "Femi Duarte"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/12661066-2d0a-55ea-bc92-bd44071f2b87",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-12T07:30:00.000000Z",
+      "end_time": "2026-10-12T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7c06ee4d-28a7-5f93-9008-7d3e6239eda0",
+        "user_email": "leila.haddad@acme.example",
+        "user_name": "Leila Haddad"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/b168c663-e3a4-5519-8083-e8eeafa64aa0",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-13T02:00:00.000000Z",
+      "end_time": "2026-10-13T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6fff4bf4-34bc-5987-8891-910b606b73b7",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-13T04:00:00.000000Z",
+      "end_time": "2026-10-13T04:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+        "user_email": "ines.eze@acme.example",
+        "user_name": "Ines Eze"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/32083709-f956-5ef7-8fc3-b44fafbc42af",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-13T07:30:00.000000Z",
+      "end_time": "2026-10-13T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b927722d-3dee-5c63-8c12-e03fb9aeb76d",
+        "user_email": "alba.holm@acme.example",
+        "user_name": "Alba Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/b65c4498-c5fa-57a7-95cd-28c10e718cf8",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-13T23:30:00.000000Z",
+      "end_time": "2026-10-14T00:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/7e5bf080-ad3c-574f-871a-885b66d43fe0",
+        "user_email": "soren.dahl@acme.example",
+        "user_name": "Soren Dahl"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/4d9ab8ca-3d34-50e3-8d9a-4851edb40f11",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-14T08:00:00.000000Z",
+      "end_time": "2026-10-14T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/47fda504-2d15-571a-b491-8523be02da85",
+        "user_email": "diego.kaur@acme.example",
+        "user_name": "Diego Kaur"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6daf9469-3a35-52ac-ae71-fc19ac4b33fe",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-16T02:00:00.000000Z",
+      "end_time": "2026-10-16T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b927722d-3dee-5c63-8c12-e03fb9aeb76d",
+        "user_email": "alba.holm@acme.example",
+        "user_name": "Alba Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/1b8c794e-f6b9-5bcd-95a7-f04c0b6d9182",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-16T02:30:00.000000Z",
+      "end_time": "2026-10-16T03:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+        "user_email": "dara.weber@acme.example",
+        "user_name": "Dara Weber"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/fd22f65a-f8af-5838-965d-d371e34ae986",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-17T00:00:00.000000Z",
+      "end_time": "2026-10-17T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+        "user_email": "dara.weber@acme.example",
+        "user_name": "Dara Weber"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/18823d36-4f8b-52f1-801e-814e2c88ed1e",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-18T01:00:00.000000Z",
+      "end_time": "2026-10-18T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/04082fe9-5817-5ddd-be41-a6abbc7e377e",
+        "user_email": "aziz.bauer@acme.example",
+        "user_name": "Aziz Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/4a3ddb5e-c2ec-5242-912d-94a10ae4956e",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-18T07:00:00.000000Z",
+      "end_time": "2026-10-18T07:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/245195bf-efbb-5489-84cd-0c164eac8bad",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-18T08:30:00.000000Z",
+      "end_time": "2026-10-18T09:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c7885257-9e7a-534a-a3a4-acfebd8b94bf",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-19T04:30:00.000000Z",
+      "end_time": "2026-10-19T05:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/0397e02d-668e-5854-84d9-c68906337fe0",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-19T05:30:00.000000Z",
+      "end_time": "2026-10-19T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/bca46155-8f35-51ee-a41d-65557d6d4dd5",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-19T06:00:00.000000Z",
+      "end_time": "2026-10-19T06:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/a9590190-34e5-5aae-bd78-b90edf4d6a2d",
+        "user_email": "yara.bauer@acme.example",
+        "user_name": "Yara Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/f165d004-8393-569c-b1db-4869f3163455",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-19T07:30:00.000000Z",
+      "end_time": "2026-10-19T08:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       },
+       {
+        "user": "https://api.calendly.com/users/231f0ce5-bb84-5f6b-8f41-c182a6c02c07",
+        "user_email": "mei.petrov@acme.example",
+        "user_name": "Mei Petrov"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/33a4b7ca-c684-5536-b94b-1a75650bb831",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-20T05:30:00.000000Z",
+      "end_time": "2026-10-20T06:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+        "user_email": "ines.eze@acme.example",
+        "user_name": "Ines Eze"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/6fc85be8-6bf7-5b70-8406-05c31cab33a8",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-20T08:00:00.000000Z",
+      "end_time": "2026-10-20T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/a9590190-34e5-5aae-bd78-b90edf4d6a2d",
+        "user_email": "yara.bauer@acme.example",
+        "user_name": "Yara Bauer"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/32191b66-577b-5e67-aaf5-5b8808c1cae2",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-22T08:00:00.000000Z",
+      "end_time": "2026-10-22T08:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/242b2803-521d-5a28-93af-4be745bf0a84",
+        "user_email": "oona.petrov@acme.example",
+        "user_name": "Oona Petrov"
+       },
+       {
+        "user": "https://api.calendly.com/users/f35961d2-f7b2-5167-9407-bf5645ae2ba4",
+        "user_email": "eitan.varga@acme.example",
+        "user_name": "Eitan Varga"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/8be30589-8efc-5842-91b7-d01b56b86904",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-22T09:00:00.000000Z",
+      "end_time": "2026-10-22T09:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/05411a09-d259-5011-982e-c6bb0d50e710",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-23T03:30:00.000000Z",
+      "end_time": "2026-10-23T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/c04136e5-3574-5906-803d-67e540006de8",
+        "user_email": "dara.weber@acme.example",
+        "user_name": "Dara Weber"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/7e66fda7-785a-5122-a125-c4ba950bad8e",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-10-23T03:30:00.000000Z",
+      "end_time": "2026-10-23T04:00:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/53aac474-2f6b-5c92-9ae2-90cb611aba30",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-24T02:00:00.000000Z",
+      "end_time": "2026-10-24T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1f066ac6-ffe4-5685-9ede-2c2cca2194ef",
+        "user_email": "alma.gupta@acme.example",
+        "user_name": "Alma Gupta"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c970644d-b927-555a-b274-74bc50cc95f5",
+      "name": "Interview",
+      "status": "active",
+      "start_time": "2026-10-25T00:00:00.000000Z",
+      "end_time": "2026-10-25T00:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/2364b8a7-c7f5-5f05-97b6-dd6aba48dde8",
+        "user_email": "zeke.holm@acme.example",
+        "user_name": "Zeke Holm"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/106c33c5-8e67-5459-bc20-a655fef9913d",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-25T02:00:00.000000Z",
+      "end_time": "2026-10-25T02:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/37b9397b-556a-546e-b471-74fb2a60d69f",
+        "user_email": "ines.eze@acme.example",
+        "user_name": "Ines Eze"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/228ef7e3-e00a-5602-82c8-ea03d6c2467e",
+      "name": "Weekly sync",
+      "status": "active",
+      "start_time": "2026-10-26T05:00:00.000000Z",
+      "end_time": "2026-10-26T05:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/da42dc97-bf1f-5226-a8a0-384e4ed889c4",
+        "user_email": "emeka.chen@acme.example",
+        "user_name": "Emeka Chen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/c34e3d3f-92d1-582d-8ae5-a567287f9ae5",
+      "name": "Demo",
+      "status": "active",
+      "start_time": "2026-10-28T01:00:00.000000Z",
+      "end_time": "2026-10-28T01:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/1aa21f0d-6f02-5fa0-bd1b-19f7caf9a7c2",
+        "user_email": "beatriz.jensen@acme.example",
+        "user_name": "Beatriz Jensen"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/b996b6f5-6989-59a4-9fdc-b404e7e5e6bf",
+      "name": "Office hours",
+      "status": "active",
+      "start_time": "2026-10-28T03:00:00.000000Z",
+      "end_time": "2026-10-28T03:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/ff1cf4cb-ef11-5581-8d5d-cdf97d1ae378",
+        "user_email": "kai.garcia@acme.example",
+        "user_name": "Kai Garcia"
+       }
+      ]
+     },
+     {
+      "uri": "https://api.calendly.com/scheduled_events/0938db38-1125-5137-988b-c8b435e2d8e9",
+      "name": "Intro call",
+      "status": "active",
+      "start_time": "2026-11-01T09:00:00.000000Z",
+      "end_time": "2026-11-01T09:30:00.000000Z",
+      "event_memberships": [
+       {
+        "user": "https://api.calendly.com/users/b63c18e3-370b-5d5b-82ef-526fbc35c3cb",
+        "user_email": "ines.xu@acme.example",
+        "user_name": "Ines Xu"
+       }
+      ]
+     }
+    ],
+    "pagination": {
+     "count": 43,
+     "next_page_token": null
+    }
+   }
+  }
+ ]
+}

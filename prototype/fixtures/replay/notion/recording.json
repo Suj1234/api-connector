@@ -1,0 +1,927 @@
+{
+ "app": "notion",
+ "recorded_at": "2026-10-29T09:00:00.000000Z",
+ "variables": {},
+ "interactions": [
+  {
+   "method": "GET",
+   "url": "https://api.notion.com/v1/users",
+   "query": {
+    "page_size": "100"
+   },
+   "body": {
+    "object": "list",
+    "results": [
+     {
+      "object": "user",
+      "id": "13a816de-05bf-5669-b590-96a170765a2b",
+      "type": "person",
+      "name": "Rhea Kaur",
+      "avatar_url": null,
+      "person": {
+       "email": "rhea.kaur@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "48f486cf-e72b-5564-8ba8-a2daef37f8fb",
+      "type": "person",
+      "name": "Maya Castillo",
+      "avatar_url": null,
+      "person": {
+       "email": "maya.castillo@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a562237b-7aab-537e-80c1-476ef497b9ab",
+      "type": "person",
+      "name": "Anika Duarte",
+      "avatar_url": null,
+      "person": {
+       "email": "anika.duarte@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "61c50241-1088-5ebf-a558-1af8abf31331",
+      "type": "person",
+      "name": "Milo Rossi",
+      "avatar_url": null,
+      "person": {
+       "email": "milo.rossi@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "b00e9cfb-d9bb-5c72-96b4-d0f217363347",
+      "type": "person",
+      "name": "Uma Okafor",
+      "avatar_url": null,
+      "person": {
+       "email": "uma.okafor@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "f90a49f1-0612-52a5-96e1-fb77c1a808c9",
+      "type": "bot",
+      "name": "Automation 1",
+      "bot": {}
+     },
+     {
+      "object": "user",
+      "id": "a9dc5758-a6b1-5192-9552-2b9b7acfc133",
+      "type": "person",
+      "name": "Lara Ito",
+      "avatar_url": null,
+      "person": {
+       "email": "lara.ito@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "f44fc84d-7ee4-5e2e-866e-c648c73e29be",
+      "type": "person",
+      "name": "Arlo Duarte",
+      "avatar_url": null,
+      "person": {
+       "email": "arlo.duarte@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "f36608c2-67ef-542b-87da-5afe8ad21ef8",
+      "type": "person",
+      "name": "Ines Xu",
+      "avatar_url": null,
+      "person": {
+       "email": "ines.xu@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "bb3e3a76-e7b4-5a7c-a69d-66a9fe91b529",
+      "type": "person",
+      "name": "Emeka Brandt",
+      "avatar_url": null,
+      "person": {
+       "email": "emeka.brandt@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "c61abede-86fc-5e94-838d-1213b65bd198",
+      "type": "person",
+      "name": "Ivy Eze",
+      "avatar_url": null,
+      "person": {
+       "email": "ivy.eze@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a6faf8c5-97a5-54ec-9096-5d34be481631",
+      "type": "person",
+      "name": "Ada Ivanova",
+      "avatar_url": null,
+      "person": {
+       "email": "ada.ivanova@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "5d2f72b3-0a51-5cd7-b374-045558cc0de9",
+      "type": "person",
+      "name": "Bilal Abara",
+      "avatar_url": null,
+      "person": {
+       "email": "bilal.abara@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "930f3121-dd58-5f6d-b06a-2014c7a13c09",
+      "type": "person",
+      "name": "Nico Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "nico.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "1b15367d-17af-5417-b3c4-d9719ad54cda",
+      "type": "person",
+      "name": "Zeke Duarte",
+      "avatar_url": null,
+      "person": {
+       "email": "zeke.duarte@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "226446ef-5480-59a3-9659-f8ca13fc408f",
+      "type": "person",
+      "name": "Ines Fontaine",
+      "avatar_url": null,
+      "person": {
+       "email": "ines.fontaine@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "635a8765-d8e1-581b-85c2-5f5402686648",
+      "type": "person",
+      "name": "Pablo Ueda",
+      "avatar_url": null,
+      "person": {
+       "email": "pablo.ueda@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "76fc9076-f39d-5297-bd7f-76d9ab3029c6",
+      "type": "person",
+      "name": "Wren Garcia",
+      "avatar_url": null,
+      "person": {
+       "email": "wren.garcia@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "ba8be384-dfed-55b4-b888-ef81e645f647",
+      "type": "person",
+      "name": "Diego Moreau",
+      "avatar_url": null,
+      "person": {
+       "email": "diego.moreau@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "01372fc6-e8ba-5bf2-97fd-c977447f0755",
+      "type": "person",
+      "name": "Elio Gupta",
+      "avatar_url": null,
+      "person": {
+       "email": "elio.gupta@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "ff2ee905-e46b-5219-a492-a73e823440c6",
+      "type": "person",
+      "name": "Yara Bauer",
+      "avatar_url": null,
+      "person": {
+       "email": "yara.bauer@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "16e2057f-5492-5592-9dda-3a41e21c2fe4",
+      "type": "person",
+      "name": "Diego Kaur",
+      "avatar_url": null,
+      "person": {
+       "email": "diego.kaur@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "49f8ed59-152a-50d1-8730-806ee0407c35",
+      "type": "person",
+      "name": "Alba Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "alba.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "888dac68-4dd6-573e-9624-0960e4b96cb8",
+      "type": "person",
+      "name": "Nadia Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "nadia.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "ccb1f9fb-de8a-5288-b4fc-47e5e3c211f3",
+      "type": "person",
+      "name": "Eitan Varga",
+      "avatar_url": null,
+      "person": {
+       "email": "eitan.varga@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "87b7a3d0-3322-5338-8a66-a4fad81dd64c",
+      "type": "person",
+      "name": "Leila Xu",
+      "avatar_url": null,
+      "person": {
+       "email": "leila.xu@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "0c615ac5-255e-5054-99c4-64967169a4a9",
+      "type": "person",
+      "name": "Dara Weber",
+      "avatar_url": null,
+      "person": {
+       "email": "dara.weber@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "cdb9e074-8fe9-5ea6-abb9-97766e194277",
+      "type": "person",
+      "name": "Zeke Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "zeke.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "77adaecd-a1be-5e46-a15f-d07f7d1dd56f",
+      "type": "person",
+      "name": "Aarav Fontaine",
+      "avatar_url": null,
+      "person": {
+       "email": "aarav.fontaine@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "e8e2c2d6-df31-54bd-9c31-39364784479c",
+      "type": "person",
+      "name": "Leila Larsen",
+      "avatar_url": null,
+      "person": {
+       "email": "leila.larsen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "d9797e8d-67ad-5dcd-ac5b-e353de6f7a42",
+      "type": "person",
+      "name": "Soren Dahl",
+      "avatar_url": null,
+      "person": {
+       "email": "soren.dahl@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "cf0eaab7-8893-5d6a-9c4a-7fc77f4128dd",
+      "type": "person",
+      "name": "Mei Petrov",
+      "avatar_url": null,
+      "person": {
+       "email": "mei.petrov@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "b54ca46a-9b75-5b29-997e-755bf3381b6b",
+      "type": "person",
+      "name": "Anika Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "anika.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "585d7c2d-6797-5e9b-8c5c-2abf744cd8f7",
+      "type": "person",
+      "name": "Alma Gupta",
+      "avatar_url": null,
+      "person": {
+       "email": "alma.gupta@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a149e2dd-1b80-5270-ab07-8f3b13855c1d",
+      "type": "person",
+      "name": "Uma Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "uma.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "ff24b7a9-50f8-5d95-b06d-f2f47c6a68d5",
+      "type": "bot",
+      "name": "Automation 2",
+      "bot": {}
+     },
+     {
+      "object": "user",
+      "id": "5b0d9aee-ed98-5714-b0a2-80f244e3222c",
+      "type": "person",
+      "name": "Femi Duarte",
+      "avatar_url": null,
+      "person": {
+       "email": "femi.duarte@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a5c149e0-9feb-53f4-96b4-4da831740170",
+      "type": "person",
+      "name": "Beatriz Jensen",
+      "avatar_url": null,
+      "person": {
+       "email": "beatriz.jensen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "976bbd55-0d3b-5cbb-9ea6-de35e190c7d0",
+      "type": "person",
+      "name": "Kai Garcia",
+      "avatar_url": null,
+      "person": {
+       "email": "kai.garcia@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "7c758823-5e4f-5ac7-a8e1-f8e92f888734",
+      "type": "person",
+      "name": "Nadia Larsen",
+      "avatar_url": null,
+      "person": {
+       "email": "nadia.larsen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "be17257d-37bd-58c0-9d71-6b8b015cbf31",
+      "type": "person",
+      "name": "Diego Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "diego.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "f09fee21-4457-5560-a5e1-9fb015b10b96",
+      "type": "person",
+      "name": "Emeka Chen",
+      "avatar_url": null,
+      "person": {
+       "email": "emeka.chen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "0b8899d4-5305-5034-9257-bb6c9c9563ee",
+      "type": "person",
+      "name": "Noor Sato",
+      "avatar_url": null,
+      "person": {
+       "email": "noor.sato@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "6238f989-cea7-5bb6-a95e-0cb739eca79b",
+      "type": "person",
+      "name": "Bo Moreau",
+      "avatar_url": null,
+      "person": {
+       "email": "bo.moreau@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "283c0abe-f0a7-534a-9a42-0cc317be19b0",
+      "type": "person",
+      "name": "Oona Petrov",
+      "avatar_url": null,
+      "person": {
+       "email": "oona.petrov@acme.example"
+      }
+     }
+    ],
+    "next_cursor": "cursor-users-1",
+    "has_more": true
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://api.notion.com/v1/users",
+   "query": {
+    "page_size": "100",
+    "start_cursor": "cursor-users-1"
+   },
+   "body": {
+    "object": "list",
+    "results": [
+     {
+      "object": "user",
+      "id": "c71b62fc-0dff-5dc9-bfcf-6479a3a0181d",
+      "type": "person",
+      "name": "Eitan Sato",
+      "avatar_url": null,
+      "person": {
+       "email": "eitan.sato@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "e961fa5a-7eaf-56f8-92a0-b14cc3cc31bb",
+      "type": "person",
+      "name": "Ines Eze",
+      "avatar_url": null,
+      "person": {
+       "email": "ines.eze@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "18c968ff-d5fd-5acb-b1cc-7cc543cb0808",
+      "type": "person",
+      "name": "Aziz Bauer",
+      "avatar_url": null,
+      "person": {
+       "email": "aziz.bauer@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "8670b454-c503-5bf6-bd99-0de628dfcc1a",
+      "type": "person",
+      "name": "Aziz Dahl",
+      "avatar_url": null,
+      "person": {
+       "email": "aziz.dahl@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "622263d7-1a09-547d-8747-26d06baca9df",
+      "type": "person",
+      "name": "Leila Haddad",
+      "avatar_url": null,
+      "person": {
+       "email": "leila.haddad@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "23d2a9de-9103-51d4-aab2-5d209b1b1d96",
+      "type": "person",
+      "name": "Carmen Kaur",
+      "avatar_url": null,
+      "person": {
+       "email": "carmen.kaur@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "8effc701-b835-5ce7-b96d-49df9eb516a1",
+      "type": "person",
+      "name": "Hugo Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "hugo.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "5be64431-5549-57d2-a205-a5745a2c4a4d",
+      "type": "person",
+      "name": "Bo Zhou",
+      "avatar_url": null,
+      "person": {
+       "email": "bo.zhou@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a78941bc-23dc-52d3-85f8-2738365b65a6",
+      "type": "person",
+      "name": "Hana Nakamura",
+      "avatar_url": null,
+      "person": {
+       "email": "hana.nakamura@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "f6c4ae1a-faa3-5a1c-abfd-89b4ced61d55",
+      "type": "person",
+      "name": "Zeke Weber",
+      "avatar_url": null,
+      "person": {
+       "email": "zeke.weber@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "0b53121e-f880-5bb0-a118-737577b792ef",
+      "type": "person",
+      "name": "Leila Ekman",
+      "avatar_url": null,
+      "person": {
+       "email": "leila.ekman@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "fa27a768-713c-5850-aac0-c28cf75ebf5e",
+      "type": "person",
+      "name": "Oona Okafor",
+      "avatar_url": null,
+      "person": {
+       "email": "oona.okafor@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "9196ffe1-4b10-52d3-b1e1-4e744c6d5a57",
+      "type": "person",
+      "name": "Carmen Fischer",
+      "avatar_url": null,
+      "person": {
+       "email": "carmen.fischer@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "96fd6dca-85a0-5dc6-8c13-c0e3b9ca07b8",
+      "type": "person",
+      "name": "Ada Kaur",
+      "avatar_url": null,
+      "person": {
+       "email": "ada.kaur@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "02b1e534-c577-514a-9311-c4e244d008b7",
+      "type": "person",
+      "name": "Aziz Moreau",
+      "avatar_url": null,
+      "person": {
+       "email": "aziz.moreau@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "75fa96ee-d4f6-5a7f-9399-bc6b34ac6bbe",
+      "type": "person",
+      "name": "Alba Abara",
+      "avatar_url": null,
+      "person": {
+       "email": "alba.abara@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "fc440d36-191d-53ca-bf95-792cc191f8c1",
+      "type": "person",
+      "name": "Kenji Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "kenji.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "5dd3f99c-b0f6-5056-8d33-7ec04f5cb970",
+      "type": "person",
+      "name": "Teo Varga",
+      "avatar_url": null,
+      "person": {
+       "email": "teo.varga@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "0a63994f-1f1c-5640-b355-d29d16b621ec",
+      "type": "person",
+      "name": "Luca Nakamura",
+      "avatar_url": null,
+      "person": {
+       "email": "luca.nakamura@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "23de4e26-5434-59fb-937a-48835dd30d79",
+      "type": "person",
+      "name": "Aziz Fontaine",
+      "avatar_url": null,
+      "person": {
+       "email": "aziz.fontaine@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "c92fec0d-c6bb-58d8-9019-ddaaf7e89b86",
+      "type": "bot",
+      "name": "Automation 3",
+      "bot": {}
+     },
+     {
+      "object": "user",
+      "id": "f9723fa9-a108-5cf1-8ef4-808a9a9d5de5",
+      "type": "person",
+      "name": "Chidi Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "chidi.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "323d5229-cf40-5123-b3c0-19d117aa0540",
+      "type": "person",
+      "name": "Jonas Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "jonas.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "969bf73e-1801-5cab-953d-9c32b5f2b63b",
+      "type": "person",
+      "name": "Zara Garcia",
+      "avatar_url": null,
+      "person": {
+       "email": "zara.garcia@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "3f2ad975-ef82-5440-ae31-f177b7a61ef9",
+      "type": "person",
+      "name": "Eitan Abara",
+      "avatar_url": null,
+      "person": {
+       "email": "eitan.abara@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "9141c91b-de7b-5687-baa2-382e60f57bf3",
+      "type": "person",
+      "name": "Rumi Chen",
+      "avatar_url": null,
+      "person": {
+       "email": "rumi.chen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "33d9be3c-84fb-5e77-992f-f5949f82de12",
+      "type": "person",
+      "name": "Hana Ivanova",
+      "avatar_url": null,
+      "person": {
+       "email": "hana.ivanova@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "65ab5b90-b453-58cd-be77-57bfe9707ea0",
+      "type": "person",
+      "name": "Mei Duarte",
+      "avatar_url": null,
+      "person": {
+       "email": "mei.duarte@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "a4aa5331-adbd-5962-9d0e-0e3d409dd1c4",
+      "type": "person",
+      "name": "Jonas Ivanova",
+      "avatar_url": null,
+      "person": {
+       "email": "jonas.ivanova@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "cb1f3767-7919-54f3-a265-590c3f880558",
+      "type": "person",
+      "name": "Lara Xu",
+      "avatar_url": null,
+      "person": {
+       "email": "lara.xu@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "e1337327-cc45-5d52-b3df-094f2b363ebd",
+      "type": "person",
+      "name": "Jalen Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "jalen.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "c7c3ddbe-2fab-5bf2-bf75-ca4b116eb38f",
+      "type": "person",
+      "name": "Priya Ueda",
+      "avatar_url": null,
+      "person": {
+       "email": "priya.ueda@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "872374f3-acd7-5479-98f4-4bbdf0135108",
+      "type": "person",
+      "name": "Chidi Chen",
+      "avatar_url": null,
+      "person": {
+       "email": "chidi.chen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "6c58b9d6-9c13-5a6a-aa93-5bd5f79ae74e",
+      "type": "person",
+      "name": "Esme Jensen",
+      "avatar_url": null,
+      "person": {
+       "email": "esme.jensen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "4197935f-cafc-55e1-9e2f-0ccdc8454b03",
+      "type": "person",
+      "name": "Rumi Haddad",
+      "avatar_url": null,
+      "person": {
+       "email": "rumi.haddad@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "fd1f0923-0ab8-54a1-9a21-bcd7f8e9784a",
+      "type": "person",
+      "name": "Omar Alvarez",
+      "avatar_url": null,
+      "person": {
+       "email": "omar.alvarez@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "0bdd0655-67e7-5a11-af41-3864d0b07cd1",
+      "type": "person",
+      "name": "Yara Dahl",
+      "avatar_url": null,
+      "person": {
+       "email": "yara.dahl@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "9dcdecc5-2097-5de9-9e6b-29b83937f999",
+      "type": "person",
+      "name": "Oona Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "oona.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "d4bc84c0-3d48-567f-9592-cfaed73a25f5",
+      "type": "person",
+      "name": "Kenji Zhou",
+      "avatar_url": null,
+      "person": {
+       "email": "kenji.zhou@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "8522cff1-b3b5-5568-8305-2f62ae14f0a3",
+      "type": "person",
+      "name": "Rafa Yilmaz",
+      "avatar_url": null,
+      "person": {
+       "email": "rafa.yilmaz@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "fb893667-e524-5e71-8653-45805a612a66",
+      "type": "person",
+      "name": "Dev Holm",
+      "avatar_url": null,
+      "person": {
+       "email": "dev.holm@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "aa43db75-00cc-559f-a4c9-235493022293",
+      "type": "person",
+      "name": "Carmen Eze",
+      "avatar_url": null,
+      "person": {
+       "email": "carmen.eze@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "45f8a4b0-ce75-5f0c-b61a-3ee3d4699c49",
+      "type": "person",
+      "name": "Alma Jensen",
+      "avatar_url": null,
+      "person": {
+       "email": "alma.jensen@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "4d04c8e7-87a3-5be8-96cf-23ed830dd47a",
+      "type": "person",
+      "name": "Elio Tanaka",
+      "avatar_url": null,
+      "person": {
+       "email": "elio.tanaka@acme.example"
+      }
+     },
+     {
+      "object": "user",
+      "id": "43b92712-9603-507a-b4ce-c4c767827bb6",
+      "type": "person",
+      "name": "Noor Quist",
+      "avatar_url": null,
+      "person": {
+       "email": "noor.quist@acme.example"
+      }
+     }
+    ],
+    "next_cursor": null,
+    "has_more": false
+   }
+  }
+ ]
+}
