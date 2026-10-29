@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, streamEvents, type ConnectorDetail, type PipelineEvent, type RunView } from "../api";
-import { useApp } from "../App";
 import { Badge, Banner, Button, Card, CodeBlock, Field, PageHeader, StatusBadge, Stepper, Tabs, Tag, TextInput, toast, type StepState } from "../components/ui";
 
 const CHECKS = [
@@ -15,7 +14,6 @@ const CHECKS = [
 export default function ConnectTest() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { replay } = useApp();
   const [c, setC] = useState<ConnectorDetail | null>(null);
   const [secrets, setSecrets] = useState<Record<string, string>>({});
   const [variables, setVariables] = useState<Record<string, string>>({});
@@ -42,6 +40,7 @@ export default function ConnectTest() {
 
   if (!c || !c.summary) return null;
   const s = c.summary;
+  const replay = c.run_mode === "replay";
   const needsSecrets = !replay;
 
   const startTest = async () => {
@@ -90,6 +89,7 @@ export default function ConnectTest() {
               <p className="text-text-subdued">This tenant runs on demo data. No token is needed and nothing reaches the real app.</p>
             ) : (
               <>
+                <Banner tone="info" title="This test calls the app's real API">There is no demo data for {c.app}, so paste a real token. Read-only calls only.</Banner>
                 <ol className="mb-4 list-decimal space-y-1 pl-5 text-text-subdued">
                   {s.login.setup_steps.map((step) => <li key={step}>{step}</li>)}
                 </ol>

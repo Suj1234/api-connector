@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
+import hmac
 import json
 import os
+import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -66,7 +69,7 @@ PLAIN = {
     "SCHEMA_INVALID": "The AI's draft didn't fit the connector format, even after one retry. Add a hint and try again.",
     "LLM_ERROR": "The AI service didn't answer: {detail}",
     "BAD_INPUT": "Some connection details are missing or in the wrong format: {detail}",
-    "NO_DEMO_DATA": "There is no demo data for this app. Switch to a live tenant to test it.",
+    "NO_DEMO_DATA": "There is no demo data for this app, so the test needs its real API and a token.",
     "CODEGEN_FAILED": "The generated code failed its checks. The platform team has been told.",
 }  # fmt: skip
 
@@ -103,6 +106,75 @@ def _vault_key() -> str:
 app = FastAPI(title="Integration builder prototype")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 _state: State | None = None
+
+# --- login (one shared demo login, set on the server: DEMO_USERNAME / DEMO_PASSWORD) ------------
+
+SESSION_COOKIE = "session"
+SESSION_HOURS = 12
+OPEN_PATHS = {"/api/login", "/api/session", "/api/logout"}
+
+
+def _login_required() -> bool:
+    return bool(get("DEMO_PASSWORD"))
+
+
+def _session_key() -> bytes:
+    # Changing DEMO_PASSWORD changes the key, so every old session stops working at once.
+    return hashlib.sha256(f"{_vault_key()}|{get('DEMO_USERNAME')}|{get('DEMO_PASSWORD')}".encode()).digest()
+
+
+def _sign(expires: int) -> str:
+    mac = hmac.new(_session_key(), str(expires).encode(), hashlib.sha256).hexdigest()
+    return f"{expires}.{mac}"
+
+
+def _valid(token: str | None) -> bool:
+    if not token or "." not in token:
+        return False
+    expires, _, _ = token.partition(".")
+    return expires.isdigit() and int(expires) > time.time() and hmac.compare_digest(token, _sign(int(expires)))
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    path = request.url.path
+    locked = _login_required() and path.startswith("/api/") and path not in OPEN_PATHS
+    if locked and not _valid(request.cookies.get(SESSION_COOKIE)):
+        return JSONResponse({"detail": "Please log in"}, status_code=401)
+    return await call_next(request)
+
+
+class Login(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+def login(body: Login, request: Request) -> JSONResponse:
+    user_ok = hmac.compare_digest(body.username.encode(), get("DEMO_USERNAME").encode())
+    password_ok = hmac.compare_digest(body.password.encode(), get("DEMO_PASSWORD").encode())
+    if not _login_required() or not (user_ok and password_ok):
+        time.sleep(0.5)  # slows down password guessing
+        raise HTTPException(401, "Wrong username or password")
+    response = JSONResponse({"logged_in": True})
+    https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+    response.set_cookie(
+        SESSION_COOKIE, _sign(int(time.time()) + SESSION_HOURS * 3600), max_age=SESSION_HOURS * 3600,
+        httponly=True, samesite="lax", secure=https,
+    )  # fmt: skip
+    return response
+
+
+@app.get("/api/session")
+def session_status(request: Request) -> dict[str, bool]:
+    return {"required": _login_required(), "logged_in": _valid(request.cookies.get(SESSION_COOKIE))}
+
+
+@app.post("/api/logout")
+def logout() -> JSONResponse:
+    response = JSONResponse({"logged_in": False})
+    response.delete_cookie(SESSION_COOKIE)
+    return response
 
 
 def state() -> State:
@@ -270,7 +342,7 @@ async def create_connector(
         t = s.get(Tenant, tenant)
         connector = Connector(
             tenant_id=tenant, app=app_name, status="draft", docs_url=docs_url,
-            run_mode=t.run_mode_default if t else "live", variables={},
+            run_mode=_run_mode_for(t, app_name), variables={},
         )  # fmt: skip
         s.add(connector)
         s.flush()
@@ -296,6 +368,14 @@ async def create_connector(
         raise HTTPException(400, "Paste the app's API docs link or upload its OpenAPI file")
     _start_draft(st, connector_id, app_name, docs_url or "", openapi, None)
     return {"id": connector_id}
+
+
+def _run_mode_for(t: Tenant | None, app_name: str) -> str:
+    """Demo-data tenants replay the recordings we have; any other app (a surprise app) runs live."""
+    mode = t.run_mode_default if t else "live"
+    if mode == "replay" and not (REPLAY / slug_for(app_name) / "recording.json").exists():
+        return "live"
+    return mode
 
 
 def _start_draft(

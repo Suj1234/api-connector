@@ -193,3 +193,29 @@ def test_sc15_no_secret_in_the_database_or_api(client: TestClient, tmp_path: Pat
         f"/api/runs/{client.get(f'/api/connectors/{cid}', headers=GLOBEX).json()['last_run']['id']}",
     ):
         assert secret not in client.get(path, headers=GLOBEX).text
+
+
+def test_login_locks_every_api_call(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DEMO_USERNAME", "panel")
+    monkeypatch.setenv("DEMO_PASSWORD", "interview-pass-1")
+    assert client.get("/api/session").json() == {"required": True, "logged_in": False}
+    assert client.get("/api/inventory", headers=ACME).status_code == 401
+    assert client.post("/api/login", json={"username": "panel", "password": "wrong"}).status_code == 401
+    assert client.post("/api/login", json={"username": "panel", "password": "interview-pass-1"}).status_code == 200
+    assert client.get("/api/inventory", headers=ACME).status_code == 200
+    # Changing the password after the interview logs everyone out at once.
+    monkeypatch.setenv("DEMO_PASSWORD", "new-pass-2")
+    assert client.get("/api/inventory", headers=ACME).status_code == 401
+
+
+def test_no_login_when_no_password_is_set(client: TestClient) -> None:
+    assert client.get("/api/session").json()["required"] is False
+    assert client.get("/api/inventory", headers=ACME).status_code == 200
+
+
+def test_surprise_app_without_demo_data_tests_live(client: TestClient) -> None:
+    cid = client.post(
+        "/api/connectors", headers=ACME, data={"app_name": "Reqres", "docs_url": "https://reqres.in/"}
+    ).json()["id"]
+    wait(client, cid, ACME)
+    assert client.get(f"/api/connectors/{cid}", headers=ACME).json()["run_mode"] == "live"

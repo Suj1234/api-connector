@@ -17,6 +17,11 @@ export function tenant(): TenantId {
   return currentTenant;
 }
 
+let onUnauthorized: (() => void) | null = null;
+export function whenLoggedOut(handler: () => void): void {
+  onUnauthorized = handler;
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -34,6 +39,9 @@ async function request<T>(method: string, path: string, body?: unknown, form?: F
     headers,
     body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
+  if (response.status === 401 && path !== "/api/login") {
+    onUnauthorized?.();
+  }
   if (!response.ok) {
     let message = response.statusText;
     try {

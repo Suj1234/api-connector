@@ -59,7 +59,10 @@ class Database:
         with self.session() as s:
             if s.scalar(select(Tenant).limit(1)) is not None:
                 return
+            live_tenant = get("LIVE_TENANT", "1") == "1"  # off in the hosted demo: no real tokens there
             for tenant_id, name, internal, mode in TENANTS:
+                if tenant_id == "globex" and not live_tenant:
+                    mode = "replay"
                 s.add(Tenant(id=tenant_id, name=name, is_internal=internal, run_mode_default=mode))
             for tenant_id, apps in INVENTORY.items():
                 for app, owner, cost, seats, renewal in apps:

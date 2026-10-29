@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
-import { api, setTenant, tenant as currentTenant, type Status, type Tenant, type TenantId } from "./api";
+import { api, setTenant, tenant as currentTenant, whenLoggedOut, type Status, type Tenant, type TenantId } from "./api";
 import { ToastHost, cx } from "./components/ui";
 import Inventory from "./screens/F1_Inventory";
 import LibraryCheck from "./screens/F2_Library";
@@ -12,6 +12,7 @@ import Detail from "./screens/F7_Detail";
 import Internal from "./screens/F8_Internal";
 import LibraryList from "./screens/Library";
 import ConnectorRouter from "./screens/ConnectorRouter";
+import Login from "./screens/Login";
 
 type Ctx = { tenant: TenantId; tenants: Tenant[]; status: Status | null; replay: boolean; refreshKey: number };
 const AppContext = createContext<Ctx>({ tenant: "acme", tenants: [], status: null, replay: true, refreshKey: 0 });
@@ -24,10 +25,19 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const navigate = useNavigate();
 
+  const [session, setSession] = useState<{ required: boolean; logged_in: boolean } | null>(null);
+
   useEffect(() => {
+    whenLoggedOut(() => setSession({ required: true, logged_in: false }));
+    api.get<{ required: boolean; logged_in: boolean }>("/api/session").then(setSession);
+  }, []);
+
+  const signedIn = session !== null && (!session.required || session.logged_in);
+  useEffect(() => {
+    if (!signedIn) return;
     api.get<Tenant[]>("/api/tenants").then(setTenants).catch(() => setTenants([]));
     api.get<Status>("/api/status").then(setStatus).catch(() => setStatus(null));
-  }, []);
+  }, [signedIn]);
 
   const switchTenant = useCallback(
     (id: TenantId) => {
@@ -38,6 +48,9 @@ export default function App() {
     },
     [navigate],
   );
+
+  if (session === null) return null;
+  if (!signedIn) return <Login onDone={() => setSession({ required: true, logged_in: true })} />;
 
   const current = tenants.find((t) => t.id === tenantId);
   const replay = current?.run_mode === "replay" && tenantId !== "internal";
