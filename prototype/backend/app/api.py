@@ -11,6 +11,7 @@ import json
 import os
 import threading
 import time
+import traceback
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, datetime
@@ -110,6 +111,18 @@ def _vault_key() -> str:
 
 
 app = FastAPI(title="Integration builder prototype")
+
+
+@app.exception_handler(Exception)
+async def unexpected_error(request: Request, error: Exception) -> JSONResponse:
+    # One short line: hosted logs cut long tracebacks off before the error itself.
+    origin = traceback.extract_tb(error.__traceback__)[-1]
+    print(
+        f"UNEXPECTED {request.url.path}: {type(error).__name__}: {str(error)[:500]} at {origin.filename}:{origin.lineno}"
+    )
+    return JSONResponse({"detail": "Something went wrong on our side."}, status_code=500)
+
+
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 _state: State | None = None
 

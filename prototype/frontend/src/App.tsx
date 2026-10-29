@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { api, setTenant, tenant as currentTenant, whenLoggedOut, type Status, type Tenant, type TenantId } from "./api";
-import { ToastHost, cx } from "./components/ui";
+import { Tag, ToastHost, cx } from "./components/ui";
 import Inventory from "./screens/F1_Inventory";
 import LibraryCheck from "./screens/F2_Library";
 import BuildProgress from "./screens/F3_Docs";
@@ -57,11 +57,6 @@ export default function App() {
 
   return (
     <AppContext.Provider value={{ tenant: tenantId, tenants, status, replay, refreshKey }}>
-      {replay && (
-        <div className="bg-demo px-6 py-1.5 text-center text-xs font-medium text-white" role="status">
-          Demo data: recorded responses, fake people. No calls reach the real app.
-        </div>
-      )}
       <div className="flex min-h-screen">
         <Sidebar internal={tenantId === "internal"} />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -118,24 +113,25 @@ function Sidebar({ internal }: { internal: boolean }) {
 }
 
 function TopBar({ tenants, tenantId, onSwitch, status }: { tenants: Tenant[]; tenantId: TenantId; onSwitch: (t: TenantId) => void; status: Status | null }) {
-  const mode = (t: Tenant) => (t.internal ? "Platform team" : t.run_mode === "replay" ? "Demo data" : "Live");
+  const current = tenants.find((t) => t.id === tenantId);
   return (
     <header className="flex h-14 items-center justify-between border-b border-border px-6">
-      <label className="flex items-center gap-2">
-        <span className="caption">Tenant</span>
-        <select
-          value={tenantId}
-          onChange={(e) => onSwitch(e.target.value as TenantId)}
-          className="h-8 rounded-sm border border-border-strong bg-surface px-2 font-medium text-text-heading"
-          aria-label="Switch tenant"
-        >
-          {tenants.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.internal ? t.name : `${t.name} · ${mode(t)}`}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2">
+          <span className="caption">Tenant</span>
+          <select
+            value={tenantId}
+            onChange={(e) => onSwitch(e.target.value as TenantId)}
+            className="h-8 rounded-sm border border-border-strong bg-surface px-2 font-medium text-text-heading"
+            aria-label="Switch tenant"
+          >
+            {tenants.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </label>
+        {current && !current.internal && current.run_mode === "replay" && <Tag>Sample data</Tag>}
+      </div>
       <div className="flex items-center gap-4 text-xs text-text-muted">
         {status && (
           <>

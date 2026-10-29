@@ -86,10 +86,10 @@ export default function ConnectTest() {
         <div className="space-y-4">
           <Card title="1. Connect">
             {replay ? (
-              <p className="text-text-subdued">This tenant runs on demo data. No token is needed and nothing reaches the real app.</p>
+              <p className="text-text-subdued">This tenant uses sample data, so no token is needed.</p>
             ) : (
               <>
-                <Banner tone="info" title="This test calls the app's real API">There is no demo data for {c.app}, so paste a real token. Read-only calls only.</Banner>
+                <Banner tone="info" title="This test calls the app's real API">There is no sample data for {c.app}, so paste a real token. Read-only calls only.</Banner>
                 <ol className="mb-4 list-decimal space-y-1 pl-5 text-text-subdued">
                   {s.login.setup_steps.map((step) => <li key={step}>{step}</li>)}
                 </ol>

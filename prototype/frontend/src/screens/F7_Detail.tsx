@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type ConnectorDetail } from "../api";
-import { Badge, Banner, Button, Card, CodeBlock, DetailsList, PageHeader, SectionTitle, StatusBadge, Table, Tabs, fmtDate, toast } from "../components/ui";
+import { Badge, Banner, Button, Card, CodeBlock, DetailsList, PageHeader, SectionTitle, StatusBadge, Table, Tabs, Tag, fmtDate, toast } from "../components/ui";
 
 export default function Detail() {
   const { id } = useParams();
@@ -57,7 +57,7 @@ export default function Detail() {
         }
       >
         {c.summary.usage.label ?? "Users only"} · {c.summary.usage.tier}
-        {c.run_mode === "replay" && <span className="ml-2"><Badge tone="warning">Demo data</Badge></span>}
+        {c.run_mode === "replay" && <span className="ml-2"><Tag>Sample data</Tag></span>}
       </PageHeader>
 
       {c.library && <Banner tone={c.library.status === "approved" ? "success" : "info"} title={c.library.status === "approved" ? "In the platform library" : "Waiting for review by the platform team"}>Customer-specific values were removed. Other customers only see it after a platform engineer approves it, and their own test always runs first.</Banner>}
@@ -77,7 +77,7 @@ export default function Detail() {
                     ["Finished", fmtDate(run.finished_at)],
                     ["Users", run.summary?.users ?? "—"],
                     ["Sandbox", run.sandbox === "docker" ? "Docker (no network except the app's host)" : "Subprocess · demo isolation only"],
-                    ["Mode", run.run_mode === "replay" ? "Demo data (recorded)" : "Live"],
+                    ["Mode", run.run_mode === "replay" ? "Sample data" : "Live"],
                     ...(run.message ? ([["Problem", run.message]] as [string, string][]) : []),
                   ]}
                 />

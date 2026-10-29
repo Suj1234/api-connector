@@ -381,3 +381,13 @@ def test_a_bad_host_gets_one_fix_then_passes() -> None:
     outcome = pipeline(llm, []).draft("Example App", f"{ROOT}/reference")
     assert outcome.spec["app"]["api_host_pattern"] == "api.example.com"
     assert "not 'localhost'" in llm.prompts[1]
+
+
+def test_relevant_docs_pages_are_read_first() -> None:
+    from app.services.docs_fetcher import _relevance
+
+    users = _relevance(f"{ROOT}/reference/users/list-organization-memberships")
+    events = _relevance(f"{ROOT}/reference/scheduled-events")
+    other = _relevance(f"{ROOT}/reference/availability")
+    write = _relevance(f"{ROOT}/reference/users/delete-user")
+    assert users > other and events > other and write < other

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type ConnectorDetail, type Savings } from "../api";
-import { Badge, Banner, BreakdownBar, Button, Field, Metric, Modal, PageHeader, Table, Tabs, Textarea, fmtDate, fmtMoney, toast } from "../components/ui";
+import { Banner, BreakdownBar, Button, Field, Metric, Modal, PageHeader, Table, Tabs, Tag, Textarea, fmtDate, fmtMoney, toast } from "../components/ui";
 
 const BUCKET_LABEL: Record<string, string> = {
   left: "Left the company",
@@ -57,7 +57,7 @@ export default function SavingsPreview() {
         actions={!live && <Button variant="primary" onClick={() => setConfirmOpen(true)}>{usersOnly ? "Go live with users only" : "Go live"}</Button>}
       >
         Usage: {s.usage_label}
-        {s.run_mode === "replay" && <Badge tone="warning">Demo data</Badge>}
+        {s.run_mode === "replay" && <Tag>Sample data</Tag>}
       </PageHeader>
 
       {s.missing.length > 0 && <Banner tone="info" title={`Upload ${s.missing.join(", ")} data to see the full picture`}>Without HR data we can't tell who left the company.</Banner>}

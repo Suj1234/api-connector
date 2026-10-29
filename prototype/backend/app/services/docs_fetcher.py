@@ -10,9 +10,9 @@
 
 from __future__ import annotations
 
+import heapq
 import json
 import re
-from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urldefrag, urljoin, urlsplit
@@ -28,6 +28,11 @@ MAX_BYTES = 3_000_000
 MAX_REDIRECTS = 5
 MAX_DEPTH = 3
 USER_AGENT = "IntegrationBuilderDocsFetcher/0.1 (+public API docs only)"
+RELEVANT_WORDS = (
+    "user", "member", "people", "person", "seat", "licen", "auth", "token", "oauth", "scope",
+    "rate", "limit", "paginat", "event", "activity", "audit", "login", "usage", "admin",
+)  # fmt: skip
+WRITE_WORDS = ("create", "update", "delete", "remove", "revoke", "patch", "webhook", "embed")
 OPENAPI_PATHS = ("/openapi.json", "/swagger.json", "/openapi.yaml", "/openapi.yml")
 LINK = re.compile(r"""href\s*=\s*["']([^"'#]+)""", re.IGNORECASE)
 SKIP_EXT = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".css", ".js", ".ico", ".woff", ".woff2", ".pdf", ".zip")
@@ -98,11 +103,13 @@ class Fetcher:
             bundle.openapi_url = "upload"
         robots = self._robots(start_url)
         host = urlsplit(start_url).netloc.lower()
-        queue: deque[tuple[str, int]] = deque([(start_url, 0)])
+        # Most relevant pages first, so a page limit never cuts off the users or auth pages.
+        queue: list[tuple[int, int, int, str]] = [(0, 0, 0, start_url)]
+        order = 0
         seen = {normalize_url(start_url)}
         candidates: list[str] = []
         while queue and len(bundle.pages) < max_pages:
-            url, depth = queue.popleft()
+            _, depth, _, url = heapq.heappop(queue)
             if robots is not None and not robots.can_fetch(USER_AGENT, url):
                 bundle.skipped.append(url)
                 continue
@@ -135,7 +142,8 @@ class Fetcher:
                 if not absolute.startswith(("http://", "https://")) or depth + 1 > MAX_DEPTH:
                     continue
                 seen.add(key)
-                queue.append((absolute, depth + 1))
+                order += 1
+                heapq.heappush(queue, (-_relevance(absolute), depth + 1, order, absolute))
         if bundle.openapi is None:
             self._discover_openapi(bundle, candidates)
         if not bundle.pages and bundle.openapi is None:
@@ -188,6 +196,13 @@ class Fetcher:
 def extract_text(html: str) -> str:
     text = trafilatura.extract(html, include_tables=True, include_links=False, favor_recall=True)
     return str(text or "").strip()
+
+
+def _relevance(url: str) -> int:
+    """How likely a docs page is to describe users, usage, login, paging or limits (from its URL only)."""
+    path = urlsplit(url).path.lower()
+    score = sum(2 for word in RELEVANT_WORDS if word in path)
+    return score - sum(3 for word in WRITE_WORDS if word in path)
 
 
 def parse_openapi(content: bytes) -> dict[str, Any]:

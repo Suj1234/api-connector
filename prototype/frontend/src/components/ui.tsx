@@ -203,7 +203,7 @@ export function Table<T>({ rows, columns, rowKey, onRow }: {
         <thead className="bg-surface-subdued">
           <tr>
             {columns.map((c) => (
-              <th key={c.key} className={cx("border-b border-border px-3 py-2 text-xs font-medium text-text-subdued", c.align === "right" ? "text-right" : "text-left")}>
+              <th key={c.key} className={cx("h-10 border-b border-border px-3 font-medium text-text-subdued", c.align === "right" ? "text-right" : "text-left")}>
                 {c.header}
               </th>
             ))}
@@ -213,7 +213,7 @@ export function Table<T>({ rows, columns, rowKey, onRow }: {
           {rows.map((row) => (
             <tr key={rowKey(row)} onClick={onRow ? () => onRow(row) : undefined} className={cx("border-b border-border last:border-0", onRow && "cursor-pointer hover:bg-surface-subdued")}>
               {columns.map((c) => (
-                <td key={c.key} className={cx("px-3 py-2.5 align-middle", c.align === "right" && "text-right")}>
+                <td key={c.key} className={cx("h-10 px-3 py-1.5 align-middle", c.align === "right" && "text-right")}>
                   {c.render(row)}
                 </td>
               ))}
