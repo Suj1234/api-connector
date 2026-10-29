@@ -9,7 +9,7 @@ A take-home assignment for a Senior PM role.
 - **TRD:** `TRD.md`. The technical build spec (was PRD Appendix A). **Build from the TRD.**
 - **DESIGN:** `DESIGN.md`. Colours, type, components, writing rules, screen layouts. **The UI uses only its tokens.**
 - **EVAL:** `EVAL.md`. The AI quality eval (benchmark), acceptance scenarios SC-01 to SC-17, security tests, test plan.
-- **Reviews:** `REVIEW_NOTES.md` (review of PRD v1) and `REVIEW_V2.md` (review of PRD v2). Their section numbers (A1–A16) refer to the old Appendix A, now `TRD.md`. Almost all their fixes are in PRD v3.
+- **README:** `README.md`. The panel's front page: reading order and the one-line idea.
 - **GitHub:** https://github.com/Suj1234/api-connector
 
 **Goal:** a working prototype for a 5-minute demo (PRD §15). **One generic engine. No app-specific code outside `specs/`.**
