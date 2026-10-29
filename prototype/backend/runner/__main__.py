@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import re
+import ssl
 import sys
 import time
 from collections.abc import Callable
@@ -137,7 +139,7 @@ def _make_client(
         missing = [name for name in module.AUTH_FIELDS if not secrets.get(name)]
         if missing:
             raise ConnectorError("BAD_INPUT", detail=f"missing credentials: {', '.join(missing)}")
-        inner = live_transport or httpx.HTTPTransport()
+        inner = live_transport or _network_transport()
         now = h.utc_now()
         sleep = time.sleep
 
@@ -148,6 +150,14 @@ def _make_client(
     limits = {**DEFAULT_LIMITS[mode], **payload.get("limits", {})}
     transport = AllowOnlyHost(host, inner)
     return module.Client(secrets, variables, transport, log, limits, now, sleep)
+
+
+def _network_transport() -> httpx.BaseTransport:
+    """The real network. Inside the Docker sandbox HTTPS_PROXY is the per-run egress proxy."""
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or None
+    ca_file = os.environ.get("SSL_CERT_FILE")
+    verify: ssl.SSLContext | bool = ssl.create_default_context(cafile=ca_file) if ca_file else True
+    return httpx.HTTPTransport(proxy=proxy, verify=verify)
 
 
 def _no_wait(_: float) -> None:
