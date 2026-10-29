@@ -171,6 +171,17 @@ def compute(
     )
 
 
+def _nice_date(value: str | None) -> str | None:
+    """DESIGN.md §7: "26 Dec 2026"."""
+    if not value:
+        return None
+    try:
+        parsed = date.fromisoformat(value)
+        return f"{parsed.day} {parsed.strftime('%b %Y')}"
+    except ValueError:
+        return value
+
+
 def _billable(user: dict[str, Any]) -> bool:
     if user.get("is_billable") is not None:
         return bool(user["is_billable"])

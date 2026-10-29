@@ -130,3 +130,66 @@ def test_count_mismatch_needs_a_note(client: TestClient) -> None:
         f"/api/connectors/{cid}/confirm", headers=ACME, json={"accept": True, "note": "2 suspended agents"}
     )
     assert ok.json()["status"] == "live"
+
+
+def test_sc02_calendly_without_usage_access_goes_live_with_users_only(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SC-02: /scheduled_events answers 403 → partial: users synced, usage blocked, no auto-repair."""
+    recording = json.loads((api.REPLAY / "calendly" / "recording.json").read_text())
+    for item in recording["interactions"]:
+        if item["url"].endswith("/scheduled_events"):
+            item["status"], item["body"] = 403, {"title": "Permission Denied"}
+    replay = tmp_path / "replay" / "calendly"
+    replay.mkdir(parents=True)
+    (replay / "recording.json").write_text(json.dumps(recording))
+    monkeypatch.setattr(api, "REPLAY", tmp_path / "replay")
+    cid = client.post(
+        "/api/connectors",
+        headers=ACME,
+        data={"app_name": "Calendly", "docs_url": "https://developer.calendly.com/api-docs"},
+    ).json()["id"]
+    wait(client, cid, ACME)
+    client.post(f"/api/connectors/{cid}/test", headers=ACME, json={})
+    wait(client, cid, ACME)
+    run = client.get(f"/api/connectors/{cid}", headers=ACME).json()["last_run"]
+    assert (run["exit_code"], run["status"], run["usage_error_code"]) == (0, "partial", "PERMISSION_OR_SCOPE")
+    assert "Owner or Admin" in run["usage_message"] and "scheduled_events:read" in run["usage_message"]
+    assert run["summary"]["repairs"] == []
+    assert (
+        client.post(f"/api/connectors/{cid}/confirm", headers=ACME, json={"accept": True}).json()["status"]
+        == "live_users_only"
+    )
+
+
+def test_sc13_token_owner_leaving_is_warned(client: TestClient) -> None:
+    cid = client.post(
+        "/api/connectors",
+        headers=ACME,
+        data={"app_name": "Calendly", "docs_url": "https://developer.calendly.com/api-docs"},
+    ).json()["id"]
+    wait(client, cid, ACME)
+    leaver = "rhea.kaur@acme.example"  # terminated in fixtures/acme/hris.csv
+    client.post(f"/api/connectors/{cid}/credentials", headers=ACME, json={"token_owner_email": leaver})
+    warning = client.get(f"/api/connectors/{cid}", headers=ACME).json()["token_owner_warning"]
+    assert warning and leaver in warning and "service account" in warning
+
+
+def test_sc15_no_secret_in_the_database_or_api(client: TestClient, tmp_path: Path) -> None:
+    secret = "sc15-very-secret-token-value"
+    cid = client.post(
+        "/api/connectors",
+        headers=GLOBEX,
+        data={"app_name": "Notion", "docs_url": "https://developers.notion.com/reference/get-users"},
+    ).json()["id"]
+    wait(client, cid, GLOBEX)
+    client.post(f"/api/connectors/{cid}/credentials", headers=GLOBEX, json={"secrets": {"token": secret}})
+    client.post(f"/api/connectors/{cid}/test", headers=GLOBEX, json={"run_mode": "replay"})
+    wait(client, cid, GLOBEX)
+    database = (tmp_path / "app.db").read_bytes()
+    assert secret.encode() not in database
+    for path in (
+        f"/api/connectors/{cid}",
+        f"/api/runs/{client.get(f'/api/connectors/{cid}', headers=GLOBEX).json()['last_run']['id']}",
+    ):
+        assert secret not in client.get(path, headers=GLOBEX).text

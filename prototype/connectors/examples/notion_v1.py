@@ -109,7 +109,7 @@ class Client:
             except httpx.ProxyError as error:
                 # The sandbox's egress proxy refused the call: only the spec's host is allowed out.
                 blocked = "403" in str(error)
-                raise ConnectorError("HOST_BLOCKED" if blocked else "SERVER_ERROR", detail="egress proxy") from None
+                raise ConnectorError("HOST_BLOCKED" if blocked else "UNREACHABLE", detail="egress proxy") from None
             except httpx.TimeoutException:
                 server_errors += 1
                 self.log.request(step, "GET", httpx.URL(path_or_url).path, None, 0, None, attempt)
@@ -118,6 +118,8 @@ class Client:
                 attempt += 1
                 self._wait(h.backoff(server_errors))
                 continue
+            except httpx.ConnectError:
+                raise ConnectorError("UNREACHABLE", detail="could not connect") from None
             except httpx.HTTPError:
                 raise ConnectorError("SERVER_ERROR", detail="connection failed") from None
             ms = int((time.monotonic() - start) * 1000)

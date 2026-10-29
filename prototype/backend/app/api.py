@@ -13,7 +13,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -58,6 +58,7 @@ PLAIN = {
     "RATE_LIMITED_OUT": "The app is limiting requests. Retry in a few minutes.",
     "TIMEOUT": "The app was too slow to answer. Retry later.",
     "SERVER_ERROR": "The app is having problems right now. Retry later.",
+    "UNREACHABLE": "We couldn't reach {host} from the sandbox. Check that this machine can reach the internet, then retry.",
     "HOST_BLOCKED": "Blocked: the connector tried to reach a server other than {host}. Nothing was sent. The platform team has been alerted.",
     "RULES_REJECTED": "This draft asked for something we never allow (for example a write or delete call). We discarded it.",
     "DOCS_UNREADABLE": "We couldn't read these docs. Upload the app's OpenAPI file or try another docs link.",
@@ -451,7 +452,23 @@ def connector_detail(connector_id: int, tenant: Tenant_, st: State_) -> dict[str
             "last_run": _run_view(run, spec) if run else None,
             "library": {"status": submitted.status, "id": submitted.id} if submitted else None,
             "confirm_note": c.confirm_note,
+            "token_owner_warning": _token_owner_warning(s, c),
         }
+
+
+def _token_owner_warning(s: Session, c: Connector) -> str | None:
+    """SC-13: warn before the person who owns the token leaves (HRIS)."""
+    owner = (c.token_owner_email or "").lower()
+    if not owner:
+        return None
+    hris = s.scalar(
+        select(CrosscheckFile).where(CrosscheckFile.tenant_id == c.tenant_id, CrosscheckFile.kind == "hris")
+    )
+    row = savings.parse_files(c.app, hris.content if hris else None, None, None).hris.get(owner)
+    if row is None or row.get("employment_status") != "terminated":
+        return None
+    when = row.get("termination_date") or "soon"
+    return f"The token owner ({owner}) leaves on {when}. Switch to a service account before then."
 
 
 def _summary(spec: dict[str, Any]) -> dict[str, Any]:
@@ -767,13 +784,7 @@ def savings_preview(connector_id: int, tenant: Tenant_, st: State_) -> dict[str,
             "contract.json" if files.get("contract") and contract_for(contract or "", c.app) else "inventory"
         )
         out["run_mode"] = c.run_mode
-        token_owner = (c.token_owner_email or "").lower()
-        hr_row = parsed.hris.get(token_owner) if token_owner else None
-        out["token_owner_warning"] = (
-            f"The token owner leaves on {hr_row.get('termination_date') or 'a set date'}: switch to a service account."
-            if hr_row and hr_row.get("employment_status") == "terminated"
-            else None
-        )
+        out["token_owner_warning"] = _token_owner_warning(s, c)
         return out
 
 
@@ -951,7 +962,14 @@ def remove(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
 # --- static frontend (built) -------------------------------------------------------------------
 
 FRONTEND = PROTOTYPE / "frontend" / "dist"
-if FRONTEND.exists():
-    from fastapi.staticfiles import StaticFiles
 
-    app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend(path: str) -> FileResponse:
+    """Serves the built UI; unknown paths get index.html so deep links work on refresh."""
+    if path.startswith("api/") or not FRONTEND.exists():
+        raise HTTPException(404, "Not found")
+    file = (FRONTEND / path).resolve()
+    if path and file.is_file() and FRONTEND.resolve() in file.parents:
+        return FileResponse(file)
+    return FileResponse(FRONTEND / "index.html")

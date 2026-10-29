@@ -1,0 +1,34 @@
+/* Tokens from DESIGN.md §10. The only place colours are defined. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0A2540; --primary-hover: #1B3A5C; --primary-pressed: #061A2E; --primary-subtle: #E9EEF4;
+  --focus-ring: #7A9CC6; --link: #0055BC;
+  --surface: #FFFFFF; --surface-subdued: #F6F8FA; --border: #EBEEF1; --border-strong: #C0C8D2;
+  --text-heading: #21252C; --text: #353A44; --text-subdued: #545969; --text-muted: #687385; --text-placeholder: #A3ACBA;
+  --success-bg: #D1FAB3; --success-fg: #217005;
+  --danger-bg: #FFE8EE; --danger-fg: #B3093C; --danger: #DF1B41;
+  --warning-bg: #FEF8CA; --warning-fg: #8A4B00;
+  --info-bg: #CFF4FC; --info-fg: #0055BC;
+  --neutral-bg: #EBEEF1; --neutral-fg: #414552;
+  --demo: #CC4B00;
+  --chart-left: #DF1B41; --chart-inactive: #EE6902; --chart-never: #87909F; --chart-not-in-hr: #0055BC;
+  --chart-active: #2A9B0E; --chart-excluded: #D5DBE1;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius-sm: 6px; --radius-md: 8px;
+  --shadow-float: 0 4px 16px rgba(10, 37, 64, 0.12);
+}
+
+html, body { background: var(--surface); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 20px; }
+* { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.title { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
+.heading { font-size: 20px; line-height: 28px; font-weight: 600; color: var(--text-heading); }
+.heading-sm { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-heading); }
+.caption { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+.overline { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.metric { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
+.code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }

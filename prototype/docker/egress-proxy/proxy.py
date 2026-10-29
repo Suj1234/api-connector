@@ -45,7 +45,11 @@ async def reply(writer: asyncio.StreamWriter, status: str) -> None:
 
 
 def public_address(host: str) -> str | None:
-    """Resolve once, check the address, and connect to that address (no DNS rebinding in between)."""
+    """Resolve once, check the address, and connect to that address (no DNS rebinding in between).
+
+    Raises OSError when the name doesn't resolve; returns None when it resolves only to
+    private or internal addresses (that one is a security event).
+    """
     for info in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM):
         address = str(info[4][0])
         ip = ipaddress.ip_address(address)
@@ -76,7 +80,9 @@ async def handle(client_reader: asyncio.StreamReader, client_writer: asyncio.Str
     try:
         address = await asyncio.get_running_loop().run_in_executor(None, public_address, host)
     except OSError:
-        address = None
+        log(event="error", reason="dns_failed", host=host)
+        await reply(client_writer, "502 Bad Gateway")
+        return
     if address is None:
         log(event="blocked", reason="no_public_address", host=host)
         await reply(client_writer, "403 Forbidden")

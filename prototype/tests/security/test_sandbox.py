@@ -207,3 +207,17 @@ def test_docker_live_proxy_refuses_other_hosts_even_without_httpx(fake_api: tupl
     assert line["proxy"].startswith("HTTP/1.1 403")
     assert line["direct"] != "connected"  # the internal network has no route to the API either
     assert any(e.get("host") == "evil.example.net" for e in result.blocked_calls)
+
+
+@pytest.mark.skipif(not docker_available(), reason="Docker or the sandbox images are not available")
+def test_docker_live_unreachable_host_is_not_a_security_event(tmp_path: Path) -> None:
+    """The right host that can't be reached is a network problem (exit 1), never exit 8."""
+    network = f"sbx-test-empty-{uuid.uuid4().hex[:8]}"
+    subprocess.run(["docker", "network", "create", network], check=True, capture_output=True)
+    try:
+        payload: dict[str, Any] = {"run_mode": "live", "secrets": {"token": TOKEN}}
+        result = run_connector(render(base_spec(), 1), payload, "api.example.com", egress_network=network)
+    finally:
+        subprocess.run(["docker", "network", "rm", network], capture_output=True)
+    assert result.exit_code == 1 and result.result["error_code"] == "UNREACHABLE", result.result
+    assert result.blocked_calls == []
