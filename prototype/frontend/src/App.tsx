@@ -64,6 +64,7 @@ export default function App() {
           <main className="mx-auto w-full max-w-[1200px] flex-1 px-6 py-6" key={refreshKey}>
             <Routes>
               <Route path="/" element={tenantId === "internal" ? <Navigate to="/internal" /> : <Inventory />} />
+              <Route path="/connect" element={<LibraryCheck />} />
               <Route path="/connect/:app" element={<LibraryCheck />} />
               <Route path="/connectors/:id" element={<ConnectorRouter />} />
               <Route path="/connectors/:id/build" element={<BuildProgress />} />

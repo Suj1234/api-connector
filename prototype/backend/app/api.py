@@ -328,6 +328,24 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                     "library_spec_id": library.id if library else None,
                 }
             )
+        # Apps the admin added themselves (not in the spend data): newest connector per app.
+        listed = {row["app"] for row in rows}
+        for connector in s.scalars(
+            select(Connector).where(Connector.tenant_id == tenant).order_by(Connector.id.desc())
+        ):
+            if connector.app in listed:
+                continue
+            listed.add(connector.app)
+            status = connector.status
+            rows.append(
+                {
+                    "app": connector.app, "owner": None, "annual_cost": None, "seats": None,
+                    "renewal_date": None, "days_to_renewal": None,
+                    "usage_status": "Connected" if status == "live" else "Users only" if status == "live_users_only" else "No usage data",
+                    "native": False, "connector": {"id": connector.id, "status": status},
+                    "in_library": False, "library_spec_id": None,
+                }
+            )  # fmt: skip
         return rows
 
 

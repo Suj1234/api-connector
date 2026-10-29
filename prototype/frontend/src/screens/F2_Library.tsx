@@ -45,7 +45,9 @@ export default function LibraryCheck() {
 
   return (
     <>
-      <PageHeader eyebrow="Connect usage data" title={app || "New app"} />
+      <PageHeader eyebrow={app ? "Connect usage data" : "Add an app"} title={app || "Any app with a public API"}>
+        {!app && "Not in your inventory yet. Give its name and its API docs; the same checks and test run as for every other app."}
+      </PageHeader>
       {error && <Banner tone="danger" title="That didn't work">{error}</Banner>}
       {row?.in_library ? (
         <div className="max-w-[640px] space-y-4">
@@ -75,7 +77,7 @@ export default function LibraryCheck() {
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button onClick={() => navigate("/")}>Cancel</Button>
-              <Button variant="primary" busy={busy} disabled={!docsUrl && !file} onClick={() => create(false)}>Build with AI</Button>
+              <Button variant="primary" busy={busy} disabled={(!docsUrl && !file) || !(app || appName.trim())} onClick={() => create(false)}>Build with AI</Button>
             </div>
           </Card>
         </div>

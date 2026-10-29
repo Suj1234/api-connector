@@ -244,3 +244,6 @@ def test_surprise_app_without_demo_data_tests_live(client: TestClient) -> None:
     ).json()["id"]
     wait(client, cid, ACME)
     assert client.get(f"/api/connectors/{cid}", headers=ACME).json()["run_mode"] == "live"
+    # An app the admin added is listed in the inventory, so it can be opened again later.
+    row = next(r for r in client.get("/api/inventory", headers=ACME).json() if r["app"] == "Reqres")
+    assert row["connector"]["id"] == cid and row["annual_cost"] is None

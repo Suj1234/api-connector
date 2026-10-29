@@ -18,7 +18,9 @@ export default function Inventory() {
 
   return (
     <>
-      <PageHeader title="App inventory">Every app you pay for, and whether we can see who really uses it.</PageHeader>
+      <PageHeader title="App inventory" actions={<Button variant="primary" onClick={() => navigate("/connect")}>Add an app</Button>}>
+        Every app you pay for, and whether we can see who really uses it.
+      </PageHeader>
       {error && <Banner tone="danger" title="Couldn't load the inventory">{error}</Banner>}
       {rows && (
         <Table
