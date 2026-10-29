@@ -635,7 +635,20 @@ prototype/
   - the model IDs and prices on the pricing page;
   - the exact `google-genai` call shape for schema-constrained output. **Checked 29 Oct 2026:** `google-genai` 2.34 takes `GenerateContentConfig(response_mime_type="application/json", response_json_schema=...)`; there is no `response_format` in this SDK version. The prototype uses the SDK's names.
 
-## 15. Tests
+## 15. Decisions made during the build
+
+Where the prototype had to choose something this spec didn't settle:
+
+- **`get_users` returns a list**, not an iterator. The runner needs the full list for de-duplication and the 20% mapping check anyway.
+- **`UNREACHABLE` (exit 1)** is a new error code: the right host couldn't be reached (DNS, network). Only a call to another host is `HOST_BLOCKED` (exit 8) and a security event; a network outage must never look like an attack.
+- **Replay matching**: every recorded parameter must match (`"*"` matches any value); extra request parameters are ignored, as most APIs ignore them; the most specific recording wins. Page-size parameters are recorded as `"*"`. A wrong path still returns 404.
+- **Evidence**: email and the user ID are never dropped, only flagged. When no docs could be read at all, nothing is dropped.
+- **Recorded AI mode**: without a Gemini key, drafts come from a saved real Gemini answer (`data/ai_recordings/`) or, failing that, the hand-written spec. Every screen says which. Live Gemini drafts are saved automatically for offline demos.
+- **The sandbox image carries a fingerprint** of the runtime code and refuses to run when it's out of date.
+- **The SSRF guard runs first** on every docs link, in every mode. Behind an outbound proxy with no local DNS, names are left to the proxy to resolve; IP literals and internal names are still refused locally.
+- **The Gemini SDK** (`google-genai` 2.34) uses `response_mime_type` + `response_json_schema` (§14).
+
+## 16. Tests
 
 The acceptance scenarios (SC-01 to SC-17), the test plan, the accounts needed and the model benchmark are in `EVAL.md`.
 

@@ -10,7 +10,7 @@ A generic builder that turns any SaaS app's public API docs into a tested, read-
 | 2 | [`TRD.md`](TRD.md) | **How it is built.** Connector spec format, engine, sandbox, AI pipeline, API, tables and savings math. |
 | 3 | [`DESIGN.md`](DESIGN.md) | **How it looks.** Colours, type, components, writing rules and layouts for screens F1–F8. |
 | 4 | [`EVAL.md`](EVAL.md) | **How we know it works.** The AI quality benchmark, acceptance scenarios, security tests and test plan. |
-| 5 | `prototype/` | **The working prototype.** In progress; run steps will be added here. |
+| 5 | [`prototype/`](prototype/README.md) | **The working prototype.** Run steps, the demo click-path and the tests. |
 
 ## The idea in one line
 

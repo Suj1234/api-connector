@@ -124,6 +124,12 @@ A take-home assignment for a Senior PM role.
    - Done when:
      - scenarios SC-01 to SC-17 (`EVAL.md` §3) pass.
 
+## Build status (29 Oct 2026)
+
+- Milestones 1, 2, 3, 5, 6 done; 7 done except the final video, which is recorded on Sujeet's Mac with Gemini on.
+- Milestone 4 (live) and the real benchmark wait on: Gemini key, test accounts, and network access to the vendor hosts.
+- Scenario status: `EVAL.md` §6. Run steps: `prototype/README.md`. Build decisions: `TRD.md` §15.
+
 ## Rules that must not be broken
 
 - The LLM only sees public docs, masked samples and scrubbed admin hints. **Never** send tokens, real names, emails or counts to the LLM.

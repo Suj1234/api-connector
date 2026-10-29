@@ -138,3 +138,29 @@ The prototype is done when all of these pass.
 - **Backtest before production:** 30 apps (10 per tier) against the platform's native connectors, plus one non-Gemini model for comparison (`PRD.md` §9). Shown as a scoreboard, e.g. "user counts matched on 26/30 apps".
 - **In production**, the eval becomes the metrics in `PRD.md` §11. The counter-metric that matters most is the **false-inactive rate**: users we flagged inactive who actually use the app.
 - **Every correction becomes a test case.** A repair, an admin hint or a reviewer rejection adds the app and the fix to the eval set, so the next model or prompt change is checked against it.
+
+---
+
+## 6. Scenario status (prototype build, 29 Oct 2026)
+
+Automated tests live in `prototype/tests/`. "Waits" means the code and test exist but need something only Sujeet can provide.
+
+| ID | Status | Where it's tested |
+|---|---|---|
+| SC-01 Zendesk T1 (OAuth) | ✅ replay, OAuth flow · waits on a live Zendesk trial | `contract/test_replay.py`, `unit/test_engine.py::test_oauth_*`, `live/test_live.py` |
+| SC-02 Calendly without usage access | ✅ | `api/test_flow.py::test_sc02_*` |
+| SC-03 Calendly admin token | ✅ replay (future and old meetings ignored) · waits on a live account | `contract/test_replay.py`, `unit/test_savings.py` |
+| SC-04 Notion T3 SSO fallback | ✅ | `unit/test_savings.py::test_notion_uses_the_sso_fallback` |
+| SC-05 Wrong path → repair | ✅ (scripted model) · waits on the Gemini key for a real run | `unit/test_ai_pipeline.py::test_repair_*` |
+| SC-06 Prompt injection | ✅ | `unit/test_ai_pipeline.py::test_prompt_injection_in_docs_is_contained`, `security/test_sandbox.py` |
+| SC-07 DELETE | ✅ | `unit/test_spec_validator.py::test_delete_is_rejected`, `test_a_draft_can_never_ask_for_delete` |
+| SC-08 Library reuse | ✅ | `api/test_flow.py::test_full_demo_flow` |
+| SC-09 Count mismatch | ✅ | `api/test_flow.py::test_count_mismatch_needs_a_note`, `unit/test_savings.py` |
+| SC-10 Rate limited | ✅ | `unit/test_engine.py::test_429_*` |
+| SC-11 Surprise app | ⏳ waits on the Gemini key and network access to the app's docs | — |
+| SC-12 SSRF | ✅ | `unit/test_ai_pipeline.py::test_ssrf_*`, `api/test_flow.py::test_ssrf_*` |
+| SC-13 Token owner leaving | ✅ | `api/test_flow.py::test_sc13_*` |
+| SC-14 Replay mode | ✅ (Docker replay runs have no network at all) | `security/test_sandbox.py::test_docker_replay_*` |
+| SC-15 Secrets | ✅ logs, database, API, LLM prompts | `contract/test_replay.py`, `api/test_flow.py::test_sc15_*`, `unit/test_ai_pipeline.py` |
+| SC-16 Benchmark | ✅ harness (oracle) · waits on the Gemini key for the real 27 drafts | `contract/test_benchmark.py` |
+| SC-17 Docs conflict | ✅ | `unit/test_ai_pipeline.py::test_docs_conflict_is_settled_by_the_vendor_page` |
