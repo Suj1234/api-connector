@@ -231,7 +231,7 @@ def calendly(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, 
     interactions = [{"method": "GET", "url": f"{api}/users/me", "query": {}, "body": me}]
     interactions += _cursor_pages(
         f"{api}/organization_memberships",
-        {"organization": org, "count": "*"},
+        {"organization": org, "count": "*?"},
         member_rows,
         [25],
         "page_token",
@@ -242,7 +242,7 @@ def calendly(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, 
         "min_start_time": "*",
         "max_start_time": "*",
         "status": "active",
-        "count": "*",
+        "count": "*?",
     }
     interactions += _cursor_pages(
         f"{api}/scheduled_events",
@@ -328,7 +328,7 @@ def zendesk(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, A
     }
     pages = _cursor_pages(
         f"{api}/api/v2/users",
-        {"role[]": ["agent", "admin"], "page[size]": "*"},
+        {"role[]": ["agent", "admin"], "page[size]": "*?"},
         rows,
         [20],
         "page[after]",
@@ -382,7 +382,7 @@ def notion(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, An
         )
     pages = _cursor_pages(
         f"{api}/users",
-        {"page_size": "*"},
+        {"page_size": "*?"},
         results,
         [45],
         "start_cursor",

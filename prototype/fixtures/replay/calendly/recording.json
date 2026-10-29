@@ -21,7 +21,7 @@
    "url": "https://api.calendly.com/organization_memberships",
    "query": {
     "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
-    "count": "*"
+    "count": "*?"
    },
    "body": {
     "collection": [
@@ -287,7 +287,7 @@
    "url": "https://api.calendly.com/organization_memberships",
    "query": {
     "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
-    "count": "*",
+    "count": "*?",
     "page_token": "cursor-organization_memberships-1"
    },
    "body": {
@@ -537,7 +537,7 @@
     "min_start_time": "*",
     "max_start_time": "*",
     "status": "active",
-    "count": "*"
+    "count": "*?"
    },
    "body": {
     "collection": [
@@ -1986,7 +1986,7 @@
     "min_start_time": "*",
     "max_start_time": "*",
     "status": "active",
-    "count": "*",
+    "count": "*?",
     "page_token": "cursor-scheduled_events-1"
    },
    "body": {

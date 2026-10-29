@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 WILDCARD = "*"
+OPTIONAL = "*?"  # a param such as a page size: any value, or left out (the API has a default)
 
 
 class HostBlockedError(Exception):
@@ -72,7 +73,8 @@ def load_recording(path: str | Path) -> dict[str, Any]:
 def _match_score(item: dict[str, Any], request: httpx.Request) -> int | None:
     """None if the interaction can't answer this request; else how many recorded params it matched.
 
-    Every recorded param must be in the request with the same value ("*" matches any value).
+    Every recorded param must be in the request with the same value ("*" matches any value;
+    "*?" also matches a request that leaves the param out).
     Extra request params are ignored, as most APIs ignore unknown params; the most specific
     recording wins (page 2, with its cursor, beats page 1).
     """
@@ -86,6 +88,8 @@ def _match_score(item: dict[str, Any], request: httpx.Request) -> int | None:
         actual.setdefault(key, []).append(value)
     expected: dict[str, Any] = item.get("query", {})
     for key, value in expected.items():
+        if value == OPTIONAL:
+            continue
         if key not in actual:
             return None
         if value == WILDCARD:

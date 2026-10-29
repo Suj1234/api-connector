@@ -23,7 +23,7 @@
      "agent",
      "admin"
     ],
-    "page[size]": "*"
+    "page[size]": "*?"
    },
    "body": {
     "users": [
@@ -243,7 +243,7 @@
      "agent",
      "admin"
     ],
-    "page[size]": "*",
+    "page[size]": "*?",
     "page[after]": "cursor-users-1"
    },
    "body": {

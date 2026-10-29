@@ -186,3 +186,15 @@ def test_replay_matches_query_with_wildcards_and_404s_the_rest() -> None:
     assert client.get("https://api.example.com/e", params={"since": "anything", "n": "1"}).json() == {"ok": True}
     assert client.get("https://api.example.com/e", params={"n": "1"}).status_code == 404
     assert client.get("https://api.example.com/other").status_code == 404
+
+
+def test_replay_optional_params_may_be_left_out() -> None:
+    recording = {
+        "interactions": [
+            {"url": "https://api.example.com/e", "query": {"count": "*?", "org": "o1"}, "body": {"ok": True}},
+        ]
+    }
+    client = httpx.Client(transport=ReplayTransport(recording))
+    assert client.get("https://api.example.com/e", params={"org": "o1"}).json() == {"ok": True}
+    assert client.get("https://api.example.com/e", params={"org": "o1", "count": "50"}).json() == {"ok": True}
+    assert client.get("https://api.example.com/e", params={"count": "50"}).status_code == 404
