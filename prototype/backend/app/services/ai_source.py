@@ -63,9 +63,12 @@ def llm_for(app_name: str) -> tuple[LLMClient, str]:
     return recorded, recorded.label
 
 
-def save_recording(app_name: str, draft: dict[str, Any]) -> Path:
+def save_recording(app_name: str, draft: dict[str, Any]) -> Path | None:
     """Keep each live Gemini draft so the demo can run offline later, honestly labelled."""
-    RECORDINGS.mkdir(parents=True, exist_ok=True)
-    path = RECORDINGS / f"{slug_for(app_name)}.json"
-    path.write_text(json.dumps(draft, indent=1))
+    try:
+        RECORDINGS.mkdir(parents=True, exist_ok=True)
+        path = RECORDINGS / f"{slug_for(app_name)}.json"
+        path.write_text(json.dumps(draft, indent=1))
+    except OSError:
+        return None  # read-only host (Vercel): nothing to keep
     return path

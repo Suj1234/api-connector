@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -10,9 +11,10 @@ from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import PROTOTYPE, get
+from app.config import PROTOTYPE, database_url, get
 from app.models.tables import CrosscheckFile, InventoryApp, Tenant, init_db, make_engine
 
 ACME_FILES = PROTOTYPE / "fixtures" / "acme"
@@ -41,12 +43,7 @@ NATIVE = {"Slack", "Zoom"}  # already connected by the platform's own connectors
 
 class Database:
     def __init__(self, url: str | None = None) -> None:
-        url = url or get("DATABASE_URL", "sqlite:///./data/app.db")
-        if url.startswith("sqlite:///./"):
-            path = PROTOTYPE / url.removeprefix("sqlite:///./")
-            path.parent.mkdir(parents=True, exist_ok=True)
-            url = f"sqlite:///{path}"
-        self.engine: Engine = make_engine(url)
+        self.engine: Engine = make_engine(url or database_url())
         init_db(self.engine)
         self.factory = sessionmaker(self.engine, expire_on_commit=False)
 
@@ -56,6 +53,10 @@ class Database:
             yield session
 
     def seed(self) -> None:
+        with contextlib.suppress(IntegrityError):  # another server instance seeded at the same moment
+            self._seed()
+
+    def _seed(self) -> None:
         with self.session() as s:
             if s.scalar(select(Tenant).limit(1)) is not None:
                 return
@@ -64,6 +65,7 @@ class Database:
                 if tenant_id == "globex" and not live_tenant:
                     mode = "replay"
                 s.add(Tenant(id=tenant_id, name=name, is_internal=internal, run_mode_default=mode))
+            s.flush()  # tenants first: the rows below point to them (Postgres enforces it)
             for tenant_id, apps in INVENTORY.items():
                 for app, owner, cost, seats, renewal in apps:
                     s.add(

@@ -24,6 +24,7 @@ TRD_TABLES = {
     "llm_calls",
     "benchmark_runs",
     "audit_events",
+    "job_events",  # progress of AI drafts and tests, readable by any server instance
 }
 
 

@@ -27,3 +27,35 @@ def load_env(path: Path = ENV_FILE) -> None:
 def get(key: str, default: str = "") -> str:
     load_env()
     return os.environ.get(key, default)
+
+
+def on_vercel() -> bool:
+    return bool(os.environ.get("VERCEL"))
+
+
+def writable_data_dir() -> Path:
+    """prototype/data locally; /tmp on read-only hosts such as Vercel (not shared between instances)."""
+    data = PROTOTYPE / "data"
+    try:
+        data.mkdir(parents=True, exist_ok=True)
+        probe = data / ".write-test"
+        probe.write_text("ok")
+        probe.unlink()
+        return data
+    except OSError:
+        tmp = Path("/tmp/integration-builder")
+        tmp.mkdir(parents=True, exist_ok=True)
+        return tmp
+
+
+def database_url() -> str:
+    """DATABASE_URL (or Vercel's POSTGRES_URL), else a local SQLite file."""
+    url = get("DATABASE_URL") or get("POSTGRES_URL")
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url.removeprefix("postgres://")
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    if not url or url.startswith("sqlite:///./"):
+        name = url.removeprefix("sqlite:///./data/") if url else "app.db"
+        url = f"sqlite:///{writable_data_dir() / name}"
+    return url

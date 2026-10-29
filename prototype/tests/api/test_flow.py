@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,18 @@ INTERNAL = {"X-Tenant": "internal"}
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}")
+    # TEST_DATABASE_URL runs the same flow on Postgres (what the hosted version uses).
+    url = os.environ.get("TEST_DATABASE_URL")
+    if url:
+        from sqlalchemy import create_engine
+
+        from app.config import database_url
+        from app.models.tables import Base
+
+        monkeypatch.setenv("DATABASE_URL", url)
+        Base.metadata.drop_all(create_engine(database_url()))
+    else:
+        monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}")
     monkeypatch.setenv("SANDBOX_MODE", "subprocess")
     monkeypatch.setenv("LLM_PROVIDER", "recorded")
     monkeypatch.setenv("VAULT_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=")
@@ -186,8 +198,9 @@ def test_sc15_no_secret_in_the_database_or_api(client: TestClient, tmp_path: Pat
     client.post(f"/api/connectors/{cid}/credentials", headers=GLOBEX, json={"secrets": {"token": secret}})
     client.post(f"/api/connectors/{cid}/test", headers=GLOBEX, json={"run_mode": "replay"})
     wait(client, cid, GLOBEX)
-    database = (tmp_path / "app.db").read_bytes()
-    assert secret.encode() not in database
+    if not os.environ.get("TEST_DATABASE_URL"):
+        database = (tmp_path / "app.db").read_bytes()
+        assert secret.encode() not in database
     for path in (
         f"/api/connectors/{cid}",
         f"/api/runs/{client.get(f'/api/connectors/{cid}', headers=GLOBEX).json()['last_run']['id']}",

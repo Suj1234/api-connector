@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import hashlib
 import hmac
 import json
 import os
+import threading
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -18,10 +20,11 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.config import DOCS_CACHE, PROTOTYPE, get
+from app.config import DOCS_CACHE, PROTOTYPE, get, on_vercel, writable_data_dir
 from app.db import Database, contract_for
 from app.models.tables import (
     AppUser,
@@ -31,6 +34,7 @@ from app.models.tables import (
     Credential,
     CrosscheckFile,
     InventoryApp,
+    JobEvent,
     LibrarySpec,
     LlmCall,
     Run,
@@ -40,7 +44,6 @@ from app.services import ai_source, evidence_check, savings
 from app.services.codegen import render, slug_for
 from app.services.docs_fetcher import DocsBundle, Fetcher
 from app.services.hints import scrub_hint
-from app.services.jobs import EventBus, run_in_background
 from app.services.pipeline import Pipeline, PipelineError, Settings
 from app.services.sandbox import DEMO_ISOLATION_LABEL, docker_available
 from app.services.ssrf_guard import SSRFBlockedError, check_url
@@ -78,10 +81,8 @@ class State:
     def __init__(self) -> None:
         self.db = Database()
         self.db.seed()
-        self.bus = EventBus()
         self.vault = Vault(_vault_key())
         self.bundles: dict[int, DocsBundle] = {}
-        self.ai_labels: dict[int, str] = {}
 
     def settings(self) -> Settings:
         settings = Settings()
@@ -94,8 +95,13 @@ def _vault_key() -> str:
     key = get("VAULT_KEY")
     if key:
         return key
+    if on_vercel():
+        # Every server instance must derive the same key. Without VAULT_KEY it comes from the demo
+        # login; changing DEMO_PASSWORD then also retires every token saved under the old one.
+        seed = f"vault|{get('DEMO_USERNAME')}|{get('DEMO_PASSWORD')}".encode()
+        return base64.b64encode(hashlib.sha256(seed).digest()).decode()
     # Local development only: a generated key kept beside the database, never committed.
-    path = PROTOTYPE / "data" / ".vault_key"
+    path = writable_data_dir() / ".vault_key"
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
         path.write_text(Vault.new_master_key())
@@ -359,15 +365,100 @@ async def create_connector(
                     created_by="library", approved_by=spec.reviewed_by,
                 )
             )  # fmt: skip
+            connector.job_kind, connector.job_state = "library", "done"
             s.commit()
-            st.bus.emit(connector_id, {"stage": "library", "status": "ok", "message": "From the platform library"})
-            st.bus.emit(connector_id, {"stage": "done", "status": "ok"})
+            _emit(st, connector_id, {"stage": "library", "status": "ok", "message": "From the platform library"})
+            _emit(st, connector_id, {"stage": "done", "status": "ok"})
             return {"id": connector_id}
         s.commit()
     if not docs_url and openapi is None:
         raise HTTPException(400, "Paste the app's API docs link or upload its OpenAPI file")
     _start_draft(st, connector_id, app_name, docs_url or "", openapi, None)
     return {"id": connector_id}
+
+
+# --- jobs: queued by a POST, run by the request that streams their progress -------------------
+
+JOB_TIMEOUT_S = 290  # stays inside a serverless request limit (300 s on Vercel)
+
+
+def _queue(st: State, connector_id: int, kind: str, args: dict[str, Any]) -> None:
+    with st.db.session() as s:
+        s.execute(delete(JobEvent).where(JobEvent.connector_id == connector_id))
+        c = s.get(Connector, connector_id)
+        assert c is not None
+        c.job_kind, c.job_state, c.job_args, c.job_started_at = kind, "queued", args, None
+        s.commit()
+
+
+def _emit(st: State, connector_id: int, event: dict[str, Any]) -> None:
+    for _ in range(5):
+        with st.db.session() as s:
+            last = s.scalar(
+                select(JobEvent.seq).where(JobEvent.connector_id == connector_id).order_by(JobEvent.seq.desc()).limit(1)
+            )
+            seq = 0 if last is None else last + 1
+            s.add(JobEvent(connector_id=connector_id, seq=seq, data={**event, "seq": seq}))
+            try:
+                s.commit()
+                return
+            except IntegrityError:
+                s.rollback()  # another writer took this seq; try the next one
+
+
+def _events_since(st: State, connector_id: int, seq: int) -> list[dict[str, Any]]:
+    with st.db.session() as s:
+        rows = s.scalars(
+            select(JobEvent).where(JobEvent.connector_id == connector_id, JobEvent.seq >= seq).order_by(JobEvent.seq)
+        )
+        return [dict(r.data) for r in rows]
+
+
+def _claim(st: State, connector_id: int) -> str | None:
+    """The first stream to arrive runs the job; a stuck job (its server instance died) is taken over."""
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        if c is None or c.job_kind is None or c.job_state == "done":
+            return None
+        started = (
+            c.job_started_at.replace(tzinfo=UTC)
+            if c.job_started_at and c.job_started_at.tzinfo is None
+            else c.job_started_at
+        )
+        stale = (
+            c.job_state == "running"
+            and started is not None
+            and (datetime.now(UTC) - started).total_seconds() > JOB_TIMEOUT_S + 30
+        )
+        if c.job_state != "queued" and not stale:
+            return None
+        claimed = s.execute(
+            update(Connector)
+            .where(Connector.id == connector_id, Connector.job_state == c.job_state)
+            .values(job_state="running", job_started_at=datetime.now(UTC))
+        )
+        s.commit()
+        return c.job_kind if claimed.rowcount == 1 else None  # type: ignore[attr-defined]
+
+
+def _run_job(st: State, connector_id: int, kind: str) -> None:
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        assert c is not None
+        args = dict(c.job_args or {})
+    try:
+        if kind == "draft":
+            _run_draft(st, connector_id, args)
+        elif kind == "test":
+            _run_test(st, connector_id, args)
+    except Exception as error:  # noqa: BLE001 - a job must always end with a "done" event
+        _fail(st, connector_id, "SERVER_ERROR", type(error).__name__)
+    finally:
+        with st.db.session() as s:
+            c = s.get(Connector, connector_id)
+            if c is not None:
+                c.job_state = "done"
+                s.commit()
 
 
 def _run_mode_for(t: Tenant | None, app_name: str) -> str:
@@ -381,64 +472,73 @@ def _run_mode_for(t: Tenant | None, app_name: str) -> str:
 def _start_draft(
     st: State, connector_id: int, app_name: str, docs_url: str, openapi: bytes | None, hint: str | None
 ) -> None:
-    st.bus.reset(connector_id)
+    openapi_text = base64.b64encode(openapi).decode() if openapi else None
+    _queue(
+        st, connector_id, "draft", {"app_name": app_name, "docs_url": docs_url, "openapi": openapi_text, "hint": hint}
+    )
 
-    def job() -> None:
-        def emit(event: dict[str, Any]) -> None:
-            st.bus.emit(connector_id, event)
 
-        if docs_url:
-            try:
-                check_url(docs_url)  # first, in every mode: no offline shortcut may skip it
-            except SSRFBlockedError as error:
-                _fail(st, connector_id, "SSRF_BLOCKED", str(error))
-                return
+def _run_draft(st: State, connector_id: int, args: dict[str, Any]) -> None:
+    app_name, docs_url, hint = args["app_name"], args["docs_url"], args.get("hint")
+    openapi = base64.b64decode(args["openapi"]) if args.get("openapi") else None
+
+    def emit(event: dict[str, Any]) -> None:
+        _emit(st, connector_id, event)
+
+    if docs_url:
         try:
-            llm, label = ai_source.llm_for(app_name)
-        except Exception as error:  # noqa: BLE001
-            _fail(st, connector_id, "LLM_ERROR", str(error))
+            check_url(docs_url)  # first, in every mode: no offline shortcut may skip it
+        except SSRFBlockedError as error:
+            _fail(st, connector_id, "SSRF_BLOCKED", str(error))
             return
-        st.ai_labels[connector_id] = label
-        emit({"stage": "ai", "status": "info", "message": label})
-        pipe = Pipeline(llm, Fetcher(), emit, st.settings())
-        bundle = st.bundles.get(connector_id)
-        if bundle is None and label != "Gemini":
-            bundle = _offline_bundle(docs_url)
-        try:
-            outcome = pipe.draft(app_name, docs_url, openapi, hint, bundle)
-        except PipelineError as error:
-            _fail(st, connector_id, error.code, error.message)
-            return
-        except Exception as error:  # noqa: BLE001
-            _fail(st, connector_id, "LLM_ERROR", f"{type(error).__name__}")
-            return
-        st.bundles[connector_id] = outcome.bundle
-        if label == "Gemini":
-            ai_source.save_recording(app_name, outcome.raw_draft)
-        with st.db.session() as s:
-            connector = s.get(Connector, connector_id)
-            assert connector is not None
-            latest = _latest(s, connector_id)
-            report = {
-                "verified": outcome.evidence.verified,
-                "failed": outcome.evidence.failed,
-                "dropped": outcome.dropped,
-                "pct": round(outcome.evidence.verified_pct, 1),
-            }
-            s.add(
-                ConnectorVersion(
-                    connector_id=connector_id, version=(latest.version + 1) if latest else 1, spec_json=outcome.spec,
-                    created_by="ai", evidence_report=report, llm_cost_usd=sum(c.cost_usd for c in outcome.llm_calls),
-                )
-            )  # fmt: skip
-            for call in outcome.llm_calls:
-                s.add(LlmCall(connector_id=connector_id, **call.__dict__))
-            connector.status, connector.tier = "draft", outcome.spec["app"]["tier"]
-            connector.error_code = connector.error_message = None
-            s.commit()
-        emit({"stage": "done", "status": "ok"})
-
-    run_in_background(job)
+    try:
+        llm, label = ai_source.llm_for(app_name)
+    except Exception as error:  # noqa: BLE001
+        _fail(st, connector_id, "LLM_ERROR", str(error))
+        return
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        assert c is not None
+        c.ai_source = label
+        s.commit()
+    emit({"stage": "ai", "status": "info", "message": label})
+    pipe = Pipeline(llm, Fetcher(), emit, st.settings())
+    bundle = st.bundles.get(connector_id)
+    if bundle is None and label != "Gemini":
+        bundle = _offline_bundle(docs_url)
+    try:
+        outcome = pipe.draft(app_name, docs_url, openapi, hint, bundle)
+    except PipelineError as error:
+        _fail(st, connector_id, error.code, error.message)
+        return
+    except Exception as error:  # noqa: BLE001
+        _fail(st, connector_id, "LLM_ERROR", f"{type(error).__name__}")
+        return
+    st.bundles[connector_id] = outcome.bundle
+    if label == "Gemini":
+        ai_source.save_recording(app_name, outcome.raw_draft)
+    with st.db.session() as s:
+        connector = s.get(Connector, connector_id)
+        assert connector is not None
+        latest = _latest(s, connector_id)
+        report = {
+            "verified": outcome.evidence.verified,
+            "failed": outcome.evidence.failed,
+            "dropped": outcome.dropped,
+            "pct": round(outcome.evidence.verified_pct, 1),
+        }
+        s.add(
+            ConnectorVersion(
+                connector_id=connector_id, version=(latest.version + 1) if latest else 1, spec_json=outcome.spec,
+                created_by="ai", evidence_report=report, llm_cost_usd=sum(c.cost_usd for c in outcome.llm_calls),
+            )
+        )  # fmt: skip
+        for call in outcome.llm_calls:
+            s.add(LlmCall(connector_id=connector_id, **call.__dict__))
+        connector.status, connector.tier = "draft", outcome.spec["app"]["tier"]
+        connector.error_code = connector.error_message = None
+        s.commit()
+    emit({"stage": "done", "status": "ok"})
 
 
 def _offline_bundle(docs_url: str) -> DocsBundle | None:
@@ -463,8 +563,8 @@ def _fail(st: State, connector_id: int, code: str, message: str) -> None:
         if connector is not None:
             connector.status, connector.error_code, connector.error_message = "needs_help", code, message
             s.commit()
-    st.bus.emit(
-        connector_id, {"stage": "done", "status": "fail", "code": code, "message": _message(code, detail=message)}
+    _emit(
+        st, connector_id, {"stage": "done", "status": "fail", "code": code, "message": _message(code, detail=message)}
     )
 
 
@@ -472,18 +572,31 @@ def _fail(st: State, connector_id: int, code: str, message: str) -> None:
 async def events(connector_id: int, tenant: Tenant_, st: State_) -> StreamingResponse:
     with st.db.session() as s:
         _connector(s, tenant, connector_id)
+    kind = _claim(st, connector_id)
+    worker = threading.Thread(target=_run_job, args=(st, connector_id, kind), daemon=True) if kind else None
+    if worker is not None:
+        worker.start()
 
     async def stream() -> AsyncIterator[str]:
         seq = 0
-        for _ in range(3000):  # ~10 minutes
-            for event in st.bus.since(connector_id, seq):
+        deadline = time.monotonic() + JOB_TIMEOUT_S + 10
+        while time.monotonic() < deadline:
+            for event in await asyncio.to_thread(_events_since, st, connector_id, seq):
                 seq = event["seq"] + 1
                 yield f"data: {json.dumps(event)}\n\n"
                 if event["stage"] == "done":
                     return
-            await asyncio.sleep(0.2)
+            if worker is None and not await asyncio.to_thread(_job_pending, st, connector_id):
+                return  # nothing running anywhere and nothing left to send
+            await asyncio.sleep(0.3)
 
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+
+def _job_pending(st: State, connector_id: int) -> bool:
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        return c is not None and c.job_state in ("queued", "running")
 
 
 @app.get("/api/connectors/{connector_id}")
@@ -512,7 +625,7 @@ def connector_detail(connector_id: int, tenant: Tenant_, st: State_) -> dict[str
             "run_mode": c.run_mode,
             "docs_url": c.docs_url,
             "from_library": c.from_library_id is not None,
-            "ai_source": st.ai_labels.get(c.id),
+            "ai_source": c.ai_source,
             "error": {"code": c.error_code, "message": _message(c.error_code, spec, c.error_message or "")}
             if c.error_code
             else None,
@@ -671,100 +784,98 @@ def test(connector_id: int, body: TestRequest, tenant: Tenant_, st: State_) -> d
         version = _latest(s, connector_id)
         if version is None:
             raise HTTPException(409, "Nothing to test yet")
-        spec = copy.deepcopy(version.spec_json)
         run_mode = body.run_mode or c.run_mode
-        run_id = str(uuid.uuid4())
+        if (
+            run_mode == "replay"
+            and not (REPLAY / slug_for(version.spec_json["app"]["name"]) / "recording.json").exists()
+        ):
+            raise HTTPException(409, _message("NO_DEMO_DATA"))
+        c.status = "testing"
+        s.commit()
+    run_id = str(uuid.uuid4())
+    _queue(st, connector_id, "test", {"run_id": run_id, "run_mode": run_mode, "tenant": tenant})
+    return {"run_id": run_id}
+
+
+def _run_test(st: State, connector_id: int, args: dict[str, Any]) -> None:
+    run_id, run_mode, tenant = args["run_id"], args["run_mode"], args["tenant"]
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        version = _latest(s, connector_id)
+        assert c is not None and version is not None
+        spec = copy.deepcopy(version.spec_json)
         payload: dict[str, Any] = {
             "run_mode": run_mode,
             "variables": dict(c.variables or {}),
             "context": {"tenant": tenant, "run_id": run_id, "connector": slug_for(c.app), "version": version.version},
         }
         if run_mode == "replay":
-            recording = REPLAY / slug_for(spec["app"]["name"]) / "recording.json"
-            if not recording.exists():
-                raise HTTPException(409, _message("NO_DEMO_DATA"))
-            payload["replay_file"] = str(recording)
+            payload["replay_file"] = str(REPLAY / slug_for(spec["app"]["name"]) / "recording.json")
         else:
-            payload["secrets"] = _secrets(s, st, c)
-        c.status = "testing"
+            payload["secrets"] = _secrets(s, st, c)  # decrypted only here, for the sandbox's stdin
         start_version = version.version
-        s.commit()
-    st.bus.reset(connector_id)
-    _start_test(st, connector_id, tenant, spec, payload, run_id, start_version)
-    return {"run_id": run_id}
 
+    def emit(event: dict[str, Any]) -> None:
+        _emit(st, connector_id, event)
 
-def _start_test(
-    st: State, connector_id: int, tenant: str, spec: dict[str, Any], payload: dict[str, Any], run_id: str, version: int
-) -> None:
-    def job() -> None:
-        def emit(event: dict[str, Any]) -> None:
-            st.bus.emit(connector_id, event)
-
-        try:
-            llm, _ = ai_source.llm_for(spec["app"]["name"])
-        except Exception:  # noqa: BLE001 - tests still run; only repairs need the model
-            llm = ai_source.RecordedLLM(spec["app"]["name"])
-        settings = st.settings()
-        pipe = Pipeline(llm, Fetcher(), emit, settings)
-        started = datetime.now(UTC)
-        try:
-            outcome = pipe.test(spec, payload, st.bundles.get(connector_id), version)
-        except PipelineError as error:
-            _fail(st, connector_id, error.code, error.message)
-            return
-        result = outcome.result
-        summary = result.result
-        with st.db.session() as s:
-            c = s.get(Connector, connector_id)
-            assert c is not None
-            final_version = version
-            for repair in outcome.repairs:
-                if repair["accepted"]:
-                    final_version += 1
-            if final_version != version:
-                s.add(
-                    ConnectorVersion(
-                        connector_id=connector_id, version=final_version, spec_json=outcome.spec,
-                        created_by="repair", code=outcome.code,
-                    )
-                )  # fmt: skip
-            for call in outcome.llm_calls:
-                s.add(LlmCall(connector_id=connector_id, **call.__dict__))
-            kept = [line for line in result.lines if line.get("type") in ("progress", "log", "result")]
+    try:
+        llm, _ = ai_source.llm_for(spec["app"]["name"])
+    except Exception:  # noqa: BLE001 - tests still run; only repairs need the model
+        llm = ai_source.RecordedLLM(spec["app"]["name"])
+    pipe = Pipeline(llm, Fetcher(), emit, st.settings())
+    started = datetime.now(UTC)
+    try:
+        outcome = pipe.test(spec, payload, st.bundles.get(connector_id), start_version)
+    except PipelineError as error:
+        _fail(st, connector_id, error.code, error.message)
+        return
+    result = outcome.result
+    summary = result.result
+    with st.db.session() as s:
+        c = s.get(Connector, connector_id)
+        assert c is not None
+        final_version = start_version + sum(1 for r in outcome.repairs if r["accepted"])
+        if final_version != start_version:
             s.add(
-                Run(
-                    id=run_id, connector_id=connector_id, version=final_version, mode="test",
-                    run_mode=payload["run_mode"], sandbox=result.sandbox,
-                    status=summary.get("status", "error") if summary.get("status") in ("ok", "partial", "error") else "error",
-                    exit_code=result.exit_code, error_code=summary.get("error_code"),
-                    usage_error_code=summary.get("usage_error_code"),
-                    summary={**summary.get("summary", {}), "repairs": outcome.repairs, "isolation": result.isolation_note},
-                    repair_try=len(outcome.repairs), started_at=started, finished_at=datetime.now(UTC), lines=kept,
+                ConnectorVersion(
+                    connector_id=connector_id, version=final_version, spec_json=outcome.spec,
+                    created_by="repair", code=outcome.code,
                 )
             )  # fmt: skip
-            c.last_run_id = run_id
-            if result.exit_code == 0:
-                s.execute(delete(AppUser).where(AppUser.connector_id == connector_id))
-                for record in result.records:
-                    s.add(_app_user(tenant, connector_id, record))
-                c.status, c.error_code, c.error_message = "testing", None, None
-                c.usage_available = any(r.get("usage_available") for r in result.records)
-            else:
-                code = summary.get("error_code") or "SERVER_ERROR"
-                c.error_code, c.error_message = code, summary.get("error_code")
-                c.status = "needs_help" if result.exit_code in (4, 6, 8) else "testing"
-                if result.exit_code == 8:
-                    s.add(
-                        AuditEvent(
-                            tenant_id=tenant, actor="sandbox", action="security.host_blocked",
-                            target=c.app, detail={"run_id": run_id, "blocked": result.blocked_calls},
-                        )
-                    )  # fmt: skip
-            s.commit()
-        emit({"stage": "done", "status": "ok" if result.exit_code == 0 else "fail", "run_id": run_id})
-
-    run_in_background(job)
+        for call in outcome.llm_calls:
+            s.add(LlmCall(connector_id=connector_id, **call.__dict__))
+        kept = [line for line in result.lines if line.get("type") in ("progress", "log", "result")]
+        s.add(
+            Run(
+                id=run_id, connector_id=connector_id, version=final_version, mode="test",
+                run_mode=run_mode, sandbox=result.sandbox,
+                status=summary.get("status", "error") if summary.get("status") in ("ok", "partial", "error") else "error",
+                exit_code=result.exit_code, error_code=summary.get("error_code"),
+                usage_error_code=summary.get("usage_error_code"),
+                summary={**summary.get("summary", {}), "repairs": outcome.repairs, "isolation": result.isolation_note},
+                repair_try=len(outcome.repairs), started_at=started, finished_at=datetime.now(UTC), lines=kept,
+            )
+        )  # fmt: skip
+        c.last_run_id = run_id
+        if result.exit_code == 0:
+            s.execute(delete(AppUser).where(AppUser.connector_id == connector_id))
+            for record in result.records:
+                s.add(_app_user(tenant, connector_id, record))
+            c.status, c.error_code, c.error_message = "testing", None, None
+            c.usage_available = any(r.get("usage_available") for r in result.records)
+        else:
+            code = summary.get("error_code") or "SERVER_ERROR"
+            c.error_code, c.error_message = code, summary.get("error_code")
+            c.status = "needs_help" if result.exit_code in (4, 6, 8) else "testing"
+            if result.exit_code == 8:
+                s.add(
+                    AuditEvent(
+                        tenant_id=tenant, actor="sandbox", action="security.host_blocked",
+                        target=c.app, detail={"run_id": run_id, "blocked": result.blocked_calls},
+                    )
+                )  # fmt: skip
+        s.commit()
+    emit({"stage": "done", "status": "ok" if result.exit_code == 0 else "fail", "run_id": run_id})
 
 
 def _app_user(tenant: str, connector_id: int, record: dict[str, Any]) -> AppUser:

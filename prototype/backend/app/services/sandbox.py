@@ -153,7 +153,9 @@ def _timeout_result(sandbox: str, note: str | None) -> SandboxResult:
 def _run_subprocess(module: Path, payload: dict[str, Any], mode: str, timeout: int) -> SandboxResult:
     # A minimal environment: no app settings, no VAULT_KEY, no LLM key. Only proxy and CA settings
     # pass through so live calls work on machines behind a proxy.
-    env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(BACKEND), "PYTHONDONTWRITEBYTECODE": "1"}
+    # The runner needs the installed packages; on some hosts (Vercel) they live outside site-packages.
+    python_path = os.pathsep.join([str(BACKEND), *(p for p in sys.path if p and os.path.isdir(p))])
+    env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": python_path, "PYTHONDONTWRITEBYTECODE": "1"}
     for key in ("HTTPS_PROXY", "https_proxy", "SSL_CERT_FILE", "NO_PROXY", "no_proxy"):
         if key in os.environ:
             env[key] = os.environ[key]

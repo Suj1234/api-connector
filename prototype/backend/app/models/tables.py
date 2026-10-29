@@ -103,6 +103,13 @@ class Connector(Base):
     error_code: Mapped[str | None] = mapped_column(String(40))
     error_message: Mapped[str | None] = mapped_column(Text)
     confirm_note: Mapped[str | None] = mapped_column(Text)
+    ai_source: Mapped[str | None] = mapped_column(String(100))  # "Gemini" or the recorded-answer label
+    # The job (AI draft or test) waiting to run. It runs inside the request that streams its
+    # progress, so it also works on serverless hosts where nothing may run after a response.
+    job_kind: Mapped[str | None] = mapped_column(String(10))
+    job_state: Mapped[str | None] = mapped_column(String(10))  # queued | running | done
+    job_args: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    job_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -304,8 +311,23 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
+class JobEvent(Base):
+    """Progress events of a connector's job, so any server instance can stream them."""
+
+    __tablename__ = "job_events"
+    __table_args__ = (UniqueConstraint("connector_id", "seq"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    connector_id: Mapped[int] = mapped_column(Integer, index=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+
 def make_engine(url: str = "sqlite:///./data/app.db") -> Engine:
-    return create_engine(url)
+    if url.startswith("sqlite"):
+        # Jobs write from a worker thread while the request thread reads.
+        return create_engine(url, connect_args={"check_same_thread": False, "timeout": 30})
+    return create_engine(url, pool_pre_ping=True)
 
 
 def init_db(engine: Engine) -> None:
