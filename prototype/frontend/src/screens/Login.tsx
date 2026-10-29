@@ -32,7 +32,7 @@ export default function Login({ onDone }: { onDone: () => void }) {
     <div className="flex min-h-screen">
       <main className="flex w-full flex-col px-6 py-6 md:w-1/2 md:px-12">
         <div>
-          <div className="overline">The platform</div>
+          <div className="eyebrow">The platform</div>
           <div className="heading-sm">Integration builder</div>
         </div>
         <form onSubmit={submit} className="my-auto w-full max-w-[360px] py-12">
@@ -55,7 +55,7 @@ export default function Login({ onDone }: { onDone: () => void }) {
       </main>
       <aside className="hidden w-1/2 border-l border-border bg-surface-subdued px-12 py-6 md:flex md:flex-col md:justify-center">
         <div className="max-w-[440px]">
-          <div className="overline mb-2">What it does</div>
+          <div className="eyebrow mb-2">What it does</div>
           <h2 className="heading">Connect any SaaS app's user and usage data, without waiting for a custom integration.</h2>
           <ul className="mt-8 space-y-6">
             {FACTS.map(([title, text]) => (

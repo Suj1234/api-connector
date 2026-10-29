@@ -90,7 +90,7 @@ function Sidebar({ internal }: { internal: boolean }) {
   return (
     <nav className="w-[240px] shrink-0 border-r border-border bg-surface px-3 py-4" aria-label="Main">
       <div className="mb-6 px-3">
-        <div className="overline">The platform</div>
+        <div className="eyebrow">The platform</div>
         <div className="heading-sm">Integration builder</div>
       </div>
       <ul className="space-y-0.5">

@@ -45,7 +45,7 @@ export default function LibraryCheck() {
 
   return (
     <>
-      <PageHeader overline="Connect usage data" title={app || "New app"} />
+      <PageHeader eyebrow="Connect usage data" title={app || "New app"} />
       {error && <Banner tone="danger" title="That didn't work">{error}</Banner>}
       {row?.in_library ? (
         <div className="max-w-[640px] space-y-4">

@@ -52,7 +52,7 @@ export default function SavingsPreview() {
   return (
     <>
       <PageHeader
-        overline="Savings preview"
+        eyebrow="Savings preview"
         title={c.app}
         actions={!live && <Button variant="primary" onClick={() => setConfirmOpen(true)}>{usersOnly ? "Go live with users only" : "Go live"}</Button>}
       >

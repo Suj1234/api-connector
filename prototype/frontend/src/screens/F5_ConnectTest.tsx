@@ -70,13 +70,15 @@ export default function ConnectTest() {
     return "waiting";
   };
   const passed = run && run.exit_code === 0 && !running;
+  // A failure before any test ran (for example the code checks) has no run to show it.
+  const lastFail = [...events].reverse().find((e) => e.stage === "done" && e.status === "fail");
+  const preRunError = running ? null : lastFail?.code === "CODEGEN_FAILED" ? lastFail.message : !run && c.error ? c.error.message : null;
   const repairs = run?.summary?.repairs ?? [];
   const repairEvents = events.filter((e) => e.stage === "repair");
 
   return (
     <>
-      <PageHeader overline="Connect and test" title={c.app} badge={<StatusBadge status={c.status} />}
-        actions={passed ? <Button variant="primary" onClick={() => navigate(`/connectors/${id}/savings`)}>See the savings</Button> : undefined}
+      <PageHeader eyebrow="Connect and test" title={c.app} badge={<StatusBadge status={c.status} />}
       >
         {c.from_library ? "From the platform library. Your own test runs on your own data first." : `Version ${c.version}`}
       </PageHeader>
@@ -123,10 +125,10 @@ export default function ConnectTest() {
               </>
             )}
             <div className="mt-4 rounded-sm bg-surface-subdued px-3 py-2 text-xs text-text-subdued">
-              🔒 Encrypted. Read-only. Never shared with the AI.
+              Encrypted. Read-only. Never shared with the AI.
             </div>
             <div className="mt-4 flex justify-end">
-              <Button variant="primary" busy={running} onClick={startTest}>{run ? "Run the test again" : "Run test"}</Button>
+              <Button variant={passed ? "secondary" : "primary"} busy={running} onClick={startTest}>{run ? "Run the test again" : "Run test"}</Button>
             </div>
           </Card>
         </div>
@@ -149,7 +151,8 @@ export default function ConnectTest() {
                 />
                 {repairEvents.length > 0 && running && <div className="caption">{repairEvents[repairEvents.length - 1].message}</div>}
               </Card>
-              {!running && run && run.exit_code !== 0 && (
+              {preRunError && <Banner tone="danger" title="The test didn't run">{preRunError}</Banner>}
+              {!running && !preRunError && run && run.exit_code !== 0 && (
                 <Banner tone="danger" title={run.error_code === "HOST_BLOCKED" ? "Blocked: security event" : "The test didn't pass"}>{run.message ?? run.error_code}</Banner>
               )}
               {!running && run?.status === "partial" && (

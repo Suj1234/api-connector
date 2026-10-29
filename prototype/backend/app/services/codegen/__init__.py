@@ -67,6 +67,11 @@ def render(spec: dict[str, Any], version: int = 1) -> str:
     return format_code(code)
 
 
+def _python_path() -> str:
+    # On some hosts (Vercel) installed packages live outside site-packages; child processes need them too.
+    return os.pathsep.join(p for p in sys.path if p and os.path.isdir(p))
+
+
 def ruff_command() -> list[str]:
     """The ruff program. Hosted bundles drop ruff's own binary, so the build installs a copy in .tools/."""
     bundled = PROTOTYPE / ".tools" / "bin" / "ruff"
@@ -120,9 +125,13 @@ def check_code(code: str, name: str = "connector") -> CodeCheck:
             capture_output=True,
             text=True,
             check=False,
-            env={**os.environ, "MYPYPATH": str(BACKEND)},
+            env={**os.environ, "MYPYPATH": str(BACKEND), "PYTHONPATH": _python_path()},
         )
-    return CodeCheck(ruff.returncode == 0 and mypy.returncode == 0, ruff.stdout.strip(), mypy.stdout.strip())
+    return CodeCheck(
+        ruff.returncode == 0 and mypy.returncode == 0,
+        (ruff.stdout + ruff.stderr).strip(),
+        (mypy.stdout + mypy.stderr).strip(),
+    )
 
 
 def _context(spec: dict[str, Any], version: int) -> dict[str, Any]:

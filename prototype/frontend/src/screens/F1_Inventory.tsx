@@ -57,7 +57,7 @@ export default function Inventory() {
                 r.native ? null : r.connector ? (
                   <Button small onClick={() => navigate(`/connectors/${r.connector!.id}`)}>Open</Button>
                 ) : (
-                  <Button small variant="primary" onClick={() => navigate(`/connect/${encodeURIComponent(r.app)}`)}>Connect usage data</Button>
+                  <Button small onClick={() => navigate(`/connect/${encodeURIComponent(r.app)}`)}>Connect usage data</Button>
                 ),
             },
           ]}

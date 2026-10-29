@@ -106,11 +106,11 @@ export function StatusBadge({ status }: { status: string }) {
 
 // --- layout -----------------------------------------------------------------------------
 
-export function PageHeader({ overline, title, badge, actions, children }: { overline?: string; title: string; badge?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
+export function PageHeader({ eyebrow, title, badge, actions, children }: { eyebrow?: string; title: string; badge?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-6">
       <div>
-        {overline && <div className="overline mb-1">{overline}</div>}
+        {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
         <div className="flex items-center gap-3">
           <h1 className="title">{title}</h1>
           {badge}

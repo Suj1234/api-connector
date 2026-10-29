@@ -46,7 +46,7 @@ export default function BuildProgress() {
 
   return (
     <>
-      <PageHeader overline="Build with AI" title="Building your connector" />
+      <PageHeader eyebrow="Build with AI" title="Building your connector" />
       <div className="max-w-[640px]">
         {ai && (
           <div className="mb-4">

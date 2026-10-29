@@ -204,6 +204,7 @@ class Pipeline:
             code = render(spec, version + len(repairs))
             code_check = check_code(code)
             if not code_check.ok:
+                print(f"CODEGEN_FAILED ruff={code_check.ruff[-400:]!r} mypy={code_check.mypy[-400:]!r}")  # for the logs
                 self._event("codegen", "fail", "Generated code failed ruff or mypy", code="CODEGEN_FAILED")
                 raise PipelineError("CODEGEN_FAILED", (code_check.ruff + "\n" + code_check.mypy)[:2000])
             self._event("codegen", "ok", "Code passes ruff and mypy --strict")

@@ -33,7 +33,7 @@ export default function Found() {
   if (!c.summary) {
     return (
       <>
-        <PageHeader overline="Connector" title={c.app} badge={<StatusBadge status={c.status} />} />
+        <PageHeader eyebrow="Connector" title={c.app} badge={<StatusBadge status={c.status} />} />
         {c.error && <Banner tone="danger" title="We couldn't build this connector">{c.error.message}</Banner>}
         <Button onClick={() => navigate(`/connect/${encodeURIComponent(c.app)}`)}>Try again</Button>
       </>
@@ -53,7 +53,7 @@ export default function Found() {
   return (
     <>
       <PageHeader
-        overline="What we found"
+        eyebrow="What we found"
         title={c.app}
         badge={<StatusBadge status={c.status} />}
         actions={

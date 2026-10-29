@@ -45,7 +45,7 @@ export default function Detail() {
   return (
     <>
       <PageHeader
-        overline="Connector"
+        eyebrow="Connector"
         title={c.app}
         badge={<StatusBadge status={c.status} />}
         actions={

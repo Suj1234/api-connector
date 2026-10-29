@@ -29,6 +29,6 @@ html, body { background: var(--surface); color: var(--text); font-family: var(--
 .heading { font-size: 20px; line-height: 28px; font-weight: 600; color: var(--text-heading); }
 .heading-sm { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-heading); }
 .caption { font-size: 12px; line-height: 16px; color: var(--text-muted); }
-.overline { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.eyebrow { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .metric { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
 .code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }

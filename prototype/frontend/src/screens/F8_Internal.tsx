@@ -35,7 +35,7 @@ export default function Internal() {
   const pending = queue.filter((q) => q.status === "pending_review");
   return (
     <>
-      <PageHeader overline="Platform team" title="Connector library" />
+      <PageHeader eyebrow="Platform team" title="Connector library" />
       <Tabs
         value={tab}
         onChange={setTab}
