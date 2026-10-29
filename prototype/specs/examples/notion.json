@@ -1,0 +1,79 @@
+{
+  "spec_version": "1.1",
+  "origin": "hand_written",
+  "app": {
+    "name": "Notion",
+    "docs_url": "https://developers.notion.com/reference/get-users",
+    "api_host_pattern": "api.notion.com",
+    "tier": "T3",
+    "tier_reason": "Public API lists users but has no activity data"
+  },
+  "variables": [],
+  "base_url": "https://api.notion.com/v1",
+  "auth": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Internal connection token",
+        "secret": true
+      }
+    ],
+    "bearer_template": "{secrets.token}",
+    "scopes": [
+      "User information with email addresses"
+    ],
+    "role_required": "A workspace owner creates the internal connection",
+    "setup_steps": [
+      "notion.so/developers/connections > New connection (internal)",
+      "Enable the capability 'User information with email addresses'",
+      "Copy the internal connection token"
+    ]
+  },
+  "default_headers": {
+    "Accept": "application/json",
+    "Notion-Version": "2026-03-11"
+  },
+  "rate_limit": {
+    "requests_per_minute": 180,
+    "plan_note": "About 180/min on most plans, 600 on Business/Enterprise",
+    "headers": {},
+    "retry_after_header": "Retry-After"
+  },
+  "bootstrap": [],
+  "streams": {
+    "users": {
+      "method": "GET",
+      "path": "/users",
+      "query": {
+        "page_size": "100"
+      },
+      "records_path": "results[?type=='person']",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "start_cursor",
+        "next_cursor_path": "next_cursor",
+        "has_more_path": "has_more"
+      },
+      "field_map": {
+        "external_id": "id",
+        "email": "person.email",
+        "name": "name",
+        "status": {
+          "const": "active"
+        }
+      }
+    },
+    "usage": null
+  },
+  "usage_definition": {
+    "metric_label": null,
+    "active_rule": null,
+    "proxy": false,
+    "fallback": "sso_last_login"
+  },
+  "warnings": [
+    "Guests are not returned",
+    "No activity data in the public API; usage comes from SSO last login and is labelled as such"
+  ]
+}

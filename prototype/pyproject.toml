@@ -1,0 +1,37 @@
+[project]
+name = "integration-builder-prototype"
+version = "0.1.0"
+description = "AI-generated integration builder prototype (see ../TRD.md)"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.7",
+  "sqlalchemy>=2.0",
+  "jsonschema>=4.22",
+  "jmespath>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-jsonschema"]
+
+[tool.pytest.ini_options]
+pythonpath = ["backend"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+strict = true
+mypy_path = "backend"
+packages = ["app"]
+
+[[tool.mypy.overrides]]
+module = ["jmespath", "jmespath.*"]
+ignore_missing_imports = true

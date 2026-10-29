@@ -1,0 +1,144 @@
+{
+  "spec_version": "1.1",
+  "origin": "hand_written",
+  "app": {
+    "name": "Calendly",
+    "docs_url": "https://developer.calendly.com/api-docs",
+    "api_host_pattern": "api.calendly.com",
+    "tier": "T2",
+    "tier_reason": "Members list has no activity field; usage is meetings hosted per user from scheduled events. Activity log is Enterprise only."
+  },
+  "variables": [],
+  "base_url": "https://api.calendly.com",
+  "auth": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "name": "token",
+        "label": "Personal access token",
+        "secret": true
+      }
+    ],
+    "bearer_template": "{secrets.token}",
+    "scopes": [
+      "users:read",
+      "organizations:read",
+      "scheduled_events:read"
+    ],
+    "role_required": "Owner or Admin (needed for organization-wide scheduled events)",
+    "setup_steps": [
+      "Calendly > profile menu > Developer > Personal access tokens (older accounts: Integrations > API & Webhooks)",
+      "Generate a new token and select scopes users:read, organizations:read, scheduled_events:read",
+      "Copy it now; Calendly shows it only once"
+    ]
+  },
+  "default_headers": {
+    "Accept": "application/json"
+  },
+  "rate_limit": {
+    "requests_per_minute": 500,
+    "plan_note": "50 per user per minute on the free plan",
+    "headers": {
+      "limit": "X-RateLimit-Limit",
+      "remaining": "X-RateLimit-Remaining",
+      "reset_seconds": "X-RateLimit-Reset"
+    },
+    "retry_after_header": null
+  },
+  "bootstrap": [
+    {
+      "name": "me",
+      "method": "GET",
+      "path": "/users/me",
+      "query": {},
+      "extract": {
+        "org_uri": "resource.current_organization"
+      }
+    }
+  ],
+  "streams": {
+    "users": {
+      "method": "GET",
+      "path": "/organization_memberships",
+      "query": {
+        "organization": "{org_uri}",
+        "count": "100"
+      },
+      "records_path": "collection",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "page_token",
+        "next_cursor_path": "pagination.next_page_token"
+      },
+      "field_map": {
+        "external_id": "user.uri",
+        "email": "user.email",
+        "name": "user.name",
+        "role": "role",
+        "status": {
+          "const": "active"
+        },
+        "is_admin": {
+          "path": "role",
+          "map": {
+            "owner": true,
+            "admin": true,
+            "user": false
+          },
+          "default": false
+        }
+      }
+    },
+    "usage": {
+      "method": "GET",
+      "path": "/scheduled_events",
+      "query": {
+        "organization": "{org_uri}",
+        "min_start_time": "{now_minus_days:90}",
+        "max_start_time": "{now}",
+        "status": "active",
+        "count": "100"
+      },
+      "records_path": "collection",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "page_token",
+        "next_cursor_path": "pagination.next_page_token"
+      },
+      "aggregate": {
+        "explode_path": "event_memberships",
+        "user_key_path": "user",
+        "join_on": "external_id",
+        "time_path": "$parent.start_time",
+        "window_days": 90,
+        "metrics": [
+          {
+            "target": "usage_metric_value",
+            "op": "count",
+            "label": "Meetings hosted (90 days)"
+          },
+          {
+            "target": "last_active_at",
+            "op": "max_time"
+          }
+        ]
+      }
+    }
+  },
+  "usage_definition": {
+    "metric_label": "Meetings hosted (90 days)",
+    "active_rule": {
+      "field": "usage_metric_value",
+      "op": "gte",
+      "value": 1
+    },
+    "proxy": true,
+    "fallback": null
+  },
+  "warnings": [
+    "Organization-wide scheduled events need an Owner or Admin token and the scheduled_events:read scope; a 403 can mean either is missing",
+    "Tokens created before Calendly introduced scopes have full access; create a new scoped token",
+    "Activity log is Enterprise only and is not used",
+    "Usage is a proxy: people who only attend meetings, or only book with others, can show 0"
+  ]
+}

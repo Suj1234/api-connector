@@ -1,0 +1,876 @@
+{
+  "$comment": "Flattened draft schema for the LLM (TRD \u00a72, \u00a78 P3). No oneOf, $ref or free-form key maps. Converted to the full connector spec and validated locally with connector_spec.schema.json.",
+  "type": "object",
+  "properties": {
+    "app": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "docs_url": {
+          "type": "string"
+        },
+        "api_host_pattern": {
+          "type": "string"
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "T1",
+            "T2",
+            "T3"
+          ]
+        },
+        "tier_reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "docs_url",
+        "api_host_pattern",
+        "tier",
+        "tier_reason"
+      ]
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "example": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "example",
+          "required",
+          "pattern"
+        ]
+      }
+    },
+    "base_url": {
+      "type": "string"
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "bearer_token",
+            "basic",
+            "api_key_header",
+            "oauth_client_credentials"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "secret": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "name",
+              "label",
+              "secret"
+            ]
+          }
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "role_required": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "setup_steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bearer_template": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basic_username": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basic_password": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "header_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value_template": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "token_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "grant_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "client_credentials",
+            "account_credentials",
+            null
+          ]
+        },
+        "client_auth": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "basic",
+            "body",
+            null
+          ]
+        },
+        "body_format": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "form",
+            "json",
+            null
+          ]
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "extra_params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ]
+          }
+        },
+        "token_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "fields",
+        "scopes",
+        "role_required",
+        "setup_steps"
+      ]
+    },
+    "default_headers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      }
+    },
+    "rate_limit": {
+      "type": "object",
+      "properties": {
+        "requests_per_minute": {
+          "type": "integer"
+        },
+        "plan_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "limit_header": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "remaining_header": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reset_seconds_header": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "retry_after_header": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "requests_per_minute"
+      ]
+    },
+    "bootstrap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "query": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "values"
+              ]
+            }
+          },
+          "extract": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "var": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "var",
+                "path"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "query",
+          "extract"
+        ]
+      }
+    },
+    "users_stream": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "query": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "values"
+            ]
+          }
+        },
+        "records_path": {
+          "type": "string"
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cursor",
+                "next_url",
+                "link_header",
+                "offset_limit",
+                "page_number"
+              ]
+            },
+            "request_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_cursor_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "has_more_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_url_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "offset_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "page_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "start": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "field_map": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "external_id",
+                  "email",
+                  "name",
+                  "role",
+                  "status",
+                  "is_admin",
+                  "license_type",
+                  "is_billable",
+                  "last_active_at"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "path",
+                  "lookup",
+                  "const"
+                ]
+              },
+              "path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "map": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "string",
+                      "description": "JSON text: \"active\", true, false, 1"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "value"
+                  ]
+                }
+              },
+              "default": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "JSON text, or null"
+              },
+              "const": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "JSON text, used when kind is const"
+              }
+            },
+            "required": [
+              "target",
+              "kind"
+            ]
+          }
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "records_path",
+        "pagination",
+        "field_map"
+      ]
+    },
+    "usage_stream": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "query": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "values"
+            ]
+          }
+        },
+        "records_path": {
+          "type": "string"
+        },
+        "pagination": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "none",
+                "cursor",
+                "next_url",
+                "link_header",
+                "offset_limit",
+                "page_number"
+              ]
+            },
+            "request_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_cursor_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "has_more_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next_url_path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "offset_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "page_param": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "start": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "explode_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "user_key_path": {
+          "type": "string"
+        },
+        "join_on": {
+          "type": "string",
+          "enum": [
+            "external_id",
+            "email"
+          ]
+        },
+        "time_path": {
+          "type": "string"
+        },
+        "window_days": {
+          "type": "integer"
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "usage_metric_value",
+                  "last_active_at"
+                ]
+              },
+              "op": {
+                "type": "string",
+                "enum": [
+                  "count",
+                  "max_time",
+                  "sum"
+                ]
+              },
+              "value_path": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "label": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "target",
+              "op"
+            ]
+          }
+        }
+      },
+      "required": [
+        "path",
+        "query",
+        "records_path",
+        "pagination",
+        "user_key_path",
+        "join_on",
+        "time_path",
+        "window_days",
+        "metrics"
+      ]
+    },
+    "usage_definition": {
+      "type": "object",
+      "properties": {
+        "metric_label": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "active_rule": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "field": {
+              "type": "string",
+              "enum": [
+                "usage_metric_value",
+                "last_active_at",
+                "is_billable",
+                "is_admin"
+              ]
+            },
+            "op": {
+              "type": "string",
+              "enum": [
+                "gte",
+                "within_days",
+                "is_true"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "field",
+            "op",
+            "value"
+          ]
+        },
+        "proxy": {
+          "type": "boolean"
+        },
+        "fallback": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "sso_last_login",
+            null
+          ]
+        }
+      },
+      "required": [
+        "metric_label",
+        "active_rule",
+        "proxy",
+        "fallback"
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "JSON Pointer into the full spec, e.g. /streams/users/path"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quote": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "25 words or fewer, copied from the docs"
+          },
+          "openapi_pointer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "field"
+        ]
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "source"
+              ]
+            }
+          },
+          "chosen": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "values",
+          "chosen",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": [
+    "app",
+    "variables",
+    "base_url",
+    "auth",
+    "default_headers",
+    "rate_limit",
+    "bootstrap",
+    "users_stream",
+    "usage_stream",
+    "usage_definition",
+    "warnings",
+    "evidence",
+    "conflicts"
+  ]
+}
