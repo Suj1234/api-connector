@@ -65,6 +65,7 @@ export default function ConnectTest() {
     const status = run?.checklist?.[step];
     if (running) return events.some((e) => e.stage === "test" && e.status === "start") ? "running" : "waiting";
     if (!run) return "waiting";
+    if (step === "usage" && status === undefined && run.exit_code === 0) return "warn"; // no usage in this app's API
     if (status === "ok") return "done";
     if (status === "fail") return step === "usage" && run.exit_code === 0 ? "warn" : "failed";
     return "waiting";
@@ -146,7 +147,7 @@ export default function ConnectTest() {
                   steps={CHECKS.map((ch) => ({
                     label: ch.label,
                     state: checkState(ch.id),
-                    detail: ch.id === "users" && run?.checklist?.users === "ok" && !running ? `${run.summary?.users} users, all pages` : ch.id === "usage" && run?.summary?.usage_sampled && !running ? "Sample (first pages only)" : undefined,
+                    detail: ch.id === "users" && run?.checklist?.users === "ok" && !running ? `${run.summary?.users} users, all pages` : ch.id === "usage" && run?.summary?.usage_sampled && !running ? "Sample (first pages only)" : ch.id === "usage" && run && run.exit_code === 0 && run.checklist?.usage === undefined && !running ? "Not in this app's API · uses last login from SSO" : undefined,
                   }))}
                 />
                 {repairEvents.length > 0 && running && <div className="caption">{repairEvents[repairEvents.length - 1].message}</div>}

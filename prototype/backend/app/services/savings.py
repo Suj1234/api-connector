@@ -185,4 +185,6 @@ def _nice_date(value: str | None) -> str | None:
 def _billable(user: dict[str, Any]) -> bool:
     if user.get("is_billable") is not None:
         return bool(user["is_billable"])
-    return user.get("status") in ("active", "invited")
+    # A member the admin API lists holds a seat unless the API says otherwise; an unknown status
+    # (the connector has no status field) must not make every seat look unassigned.
+    return user.get("status") in (None, "active", "invited")
