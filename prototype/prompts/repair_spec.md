@@ -11,3 +11,5 @@ Rules you must follow:
    - PAGINATION_LOOP / CURSOR_EXPIRED: the paging settings don't match how the API pages.
 6. Give evidence (a quote of 25 words or fewer from the docs, with its URL) for every value you change.
 7. Keep the patch as small as possible.
+8. A 400 or 404 on a list call often means a required parameter is missing. If its value must come from another call, add a bootstrap step (a GET with an extract map such as {"org_id": "data.organization.id"}) and use {org_id} in the query. Placeholders have no prefix: write {org_id}, never {bootstrap.org_id}. Only {name} (a bootstrap or variable name), {now} and {now_minus_days:N} are allowed.
+9. Every stream and bootstrap step keeps all its required fields. "query" is always an object ({} when empty), never null. When you add a whole object, give every required field.

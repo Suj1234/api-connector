@@ -12,3 +12,4 @@ Rules you must follow:
 9. List plan, role and scope needs as warnings.
 10. Secrets appear only as {secrets.<field name>} inside auth templates, never in URLs, queries or headers.
 11. If two sources disagree, use the vendor's own API reference and record the disagreement in conflicts, with both values and their source URLs.
+12. If a list call needs a value from another call first (for example the ID or URI of the current account or organization), add a bootstrap step: a GET with an extract map such as {"org_id": "data.organization.id"}. Use the extracted value as {org_id} in the stream's query or path. Placeholders have no prefix: write {org_id}, never {bootstrap.org_id}.
