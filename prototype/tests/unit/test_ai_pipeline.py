@@ -363,3 +363,21 @@ def test_email_is_never_dropped_and_nothing_is_dropped_without_docs() -> None:
     llm = ScriptedLLM([spec_to_draft(spec), spec_to_draft(spec)])
     offline = pipeline(llm, []).draft("Example App", f"{ROOT}/reference", bundle=DocsBundle(f"{ROOT}/reference"))
     assert offline.dropped == [] and "last_active_at" in offline.spec["streams"]["users"]["field_map"]
+
+
+def test_a_host_given_as_a_url_is_tidied() -> None:
+    draft = spec_to_draft(good_spec())
+    draft["app"]["api_host_pattern"] = "https://API.example.com/v1/"
+    llm = ScriptedLLM([draft])
+    outcome = pipeline(llm, []).draft("Example App", f"{ROOT}/reference")
+    assert outcome.spec["app"]["api_host_pattern"] == "api.example.com"
+    assert len(llm.prompts) == 1  # no fix needed
+
+
+def test_a_bad_host_gets_one_fix_then_passes() -> None:
+    bad = spec_to_draft(good_spec())
+    bad["app"]["api_host_pattern"] = "localhost"
+    llm = ScriptedLLM([bad, spec_to_draft(good_spec())])
+    outcome = pipeline(llm, []).draft("Example App", f"{ROOT}/reference")
+    assert outcome.spec["app"]["api_host_pattern"] == "api.example.com"
+    assert "not 'localhost'" in llm.prompts[1]

@@ -32,6 +32,7 @@ from app.services.ssrf_guard import SSRFBlockedError
 from runtime import helpers as h
 
 PROMPTS = PROTOTYPE / "prompts"
+HOST_POINTERS = {"/app/api_host_pattern", "/base_url"}  # host-shape mistakes the AI may fix once
 DRAFT_SCHEMA = json.loads((PROTOTYPE / "schemas" / "draft_spec.schema.json").read_text())
 Emit = Callable[[dict[str, Any]], None]
 
@@ -145,9 +146,11 @@ class Pipeline:
             raise PipelineError("LLM_ERROR", str(error)) from error
         draft = answer.data
         spec = draft_to_spec(draft)
-        schema_issues = [i for i in validate_spec(spec).issues if i.code != RULES_REJECTED]
-        if schema_issues and not _rules_rejected(spec):
-            issues = "\n".join(f"- {i.pointer}: {i.message}" for i in schema_issues[:20])
+        found = validate_spec(spec).issues
+        # A badly shaped host is a mistake worth one fix; any other rule break (a write call) is discarded.
+        fixable = [i for i in found if i.code != RULES_REJECTED or i.pointer in HOST_POINTERS]
+        if fixable and all(i.code != RULES_REJECTED or i.pointer in HOST_POINTERS for i in found):
+            issues = "\n".join(f"- {i.pointer}: {i.message}" for i in fixable[:20])
             fix = f"{prompt}\n\nYour previous answer:\n{json.dumps(draft)}\n\nIt broke these rules. Fix them:\n{issues}"
             draft = self._ask("draft_fix", self.settings.draft_model, system, fix, DRAFT_SCHEMA, calls).data
             spec = draft_to_spec(draft)
@@ -240,10 +243,6 @@ class Pipeline:
             )
             self._event("repair", "ok", answer.data.get("diagnosis", "Patched"), attempt=attempt)
             spec = patched
-
-
-def _rules_rejected(spec: dict[str, Any]) -> bool:
-    return validate_spec(spec).error_code == RULES_REJECTED
 
 
 def _host(spec: dict[str, Any], variables: dict[str, str], payload: dict[str, Any]) -> str:

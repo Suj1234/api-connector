@@ -7,6 +7,7 @@ ask for a write. Values the draft carries as JSON text (lookup maps, constants) 
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 AUTH_EXTRA = {
@@ -81,6 +82,16 @@ def _field_map(entries: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _bare_host(value: Any) -> Any:
+    """'https://API.example.com/v2/' → 'api.example.com'. Only tidies the shape; the rule checks still judge it."""
+    if not isinstance(value, str):
+        return value
+    host = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", "", value.strip())
+    host = re.split(r"[/?#]", host, maxsplit=1)[0]
+    host = re.sub(r":\d+$", "", host).rstrip(".")
+    return re.sub(r"[^{}]+(?=\{|$)", lambda m: m.group(0).lower(), host)  # placeholders keep their case
+
+
 def draft_to_spec(draft: dict[str, Any]) -> dict[str, Any]:
     auth_in = draft.get("auth", {})
     kind = auth_in.get("type", "bearer_token")
@@ -145,7 +156,7 @@ def draft_to_spec(draft: dict[str, Any]) -> dict[str, Any]:
     spec: dict[str, Any] = {
         "spec_version": "1.1",
         "origin": "ai",
-        "app": draft.get("app", {}),
+        "app": {**draft.get("app", {}), "api_host_pattern": _bare_host(draft.get("app", {}).get("api_host_pattern"))},
         "variables": draft.get("variables", []),
         "base_url": draft.get("base_url"),
         "auth": auth,

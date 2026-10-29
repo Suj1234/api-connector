@@ -192,7 +192,7 @@ class _RuleChecker:
             self.reject(pointer, "Placeholders are only allowed in the left-most part of the host")
             return False
         if len(fixed) < 2 or not all(HOST_LABEL.match(label) for label in fixed):
-            self.reject(pointer, "Host must end in a fixed domain such as example.com")
+            self.reject(pointer, f"Host must end in a fixed domain such as example.com, not '{pattern}'")
             return False
         if PLACEHOLDER.search(labels[0]):
             if PLACEHOLDER.fullmatch(labels[0]) is None:

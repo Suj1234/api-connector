@@ -66,7 +66,7 @@ PLAIN = {
     "SERVER_ERROR": "The app is having problems right now. Retry later.",
     "UNREACHABLE": "We couldn't reach {host} from the sandbox. Check that this machine can reach the internet, then retry.",
     "HOST_BLOCKED": "Blocked: the connector tried to reach a server other than {host}. Nothing was sent. The platform team has been alerted.",
-    "RULES_REJECTED": "This draft asked for something we never allow (for example a write or delete call). We discarded it.",
+    "RULES_REJECTED": "This draft broke a safety rule (shown above), so we discarded it. No code was generated or run.",
     "DOCS_UNREADABLE": "We couldn't read these docs. Upload the app's OpenAPI file or try another docs link.",
     "SSRF_BLOCKED": "That link points to a private or internal address. Use the app's public docs link.",
     "SCHEMA_INVALID": "The AI's draft didn't fit the connector format, even after one retry. Add a hint and try again.",
