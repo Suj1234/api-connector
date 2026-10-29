@@ -115,11 +115,17 @@ def check(spec: dict[str, Any], bundle: DocsBundle) -> EvidenceReport:
     return report
 
 
-def drop_unproven_optional(spec: dict[str, Any], report: EvidenceReport) -> list[str]:
-    """Optional fields that still fail after the re-ask are removed; required ones are flagged."""
+NEVER_DROPPED = ("/external_id", "/email")  # the user id and the cross-check join key
+
+
+def drop_unproven_optional(spec: dict[str, Any], report: EvidenceReport, docs_read: bool = True) -> list[str]:
+    """Optional fields that still fail after the re-ask are removed; required ones are flagged.
+
+    When no docs could be read at all, nothing is dropped: that's missing docs, not a wrong field.
+    """
     dropped = []
-    for pointer in list(report.failed):
-        if not pointer.startswith(OPTIONAL_PREFIXES) or pointer.endswith("/external_id"):
+    for pointer in list(report.failed) if docs_read else []:
+        if not pointer.startswith(OPTIONAL_PREFIXES) or pointer.endswith(NEVER_DROPPED):
             continue
         parts = pointer.strip("/").split("/")
         node = spec

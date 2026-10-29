@@ -1,0 +1,957 @@
+"""Backend API (TRD §9). Every call carries X-Tenant: acme | globex | internal (no real login)."""
+
+from __future__ import annotations
+
+import asyncio
+import copy
+import json
+import os
+import uuid
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+from typing import Annotated, Any
+
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse, StreamingResponse
+from pydantic import BaseModel
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.config import DOCS_CACHE, PROTOTYPE, get
+from app.db import Database, contract_for
+from app.models.tables import (
+    AppUser,
+    AuditEvent,
+    Connector,
+    ConnectorVersion,
+    Credential,
+    CrosscheckFile,
+    InventoryApp,
+    LibrarySpec,
+    LlmCall,
+    Run,
+    Tenant,
+)
+from app.services import ai_source, evidence_check, savings
+from app.services.codegen import render, slug_for
+from app.services.docs_fetcher import DocsBundle, Fetcher
+from app.services.hints import scrub_hint
+from app.services.jobs import EventBus, run_in_background
+from app.services.pipeline import Pipeline, PipelineError, Settings
+from app.services.sandbox import DEMO_ISOLATION_LABEL, docker_available
+from app.services.ssrf_guard import SSRFBlockedError, check_url
+from app.services.vault import Sealed, Vault
+from runtime import helpers as h
+
+REPLAY = PROTOTYPE / "fixtures" / "replay"
+TENANTS = ("acme", "globex", "internal")
+LIBRARY_MIN_SHOWN = 5
+PLAIN = {
+    "AUTH_REJECTED": "The token was rejected. Create a new one and reconnect.",
+    "PERMISSION_OR_SCOPE": "This token can't read this data. It needs: {scopes} and the role {role}.",
+    "PAID_ONLY": "Your {app} plan doesn't include this data. Users will still sync.",
+    "WRONG_REQUEST": "We used the wrong request. We tried to fix it automatically.",
+    "MAPPING_FAILED": "The app's data didn't match what we expected. We tried to fix it automatically.",
+    "PAGINATION_LOOP": "Paging didn't work the way the docs describe. We tried to fix it automatically.",
+    "CURSOR_EXPIRED": "Paging didn't work the way the docs describe. We tried to fix it automatically.",
+    "RATE_LIMITED_OUT": "The app is limiting requests. Retry in a few minutes.",
+    "TIMEOUT": "The app was too slow to answer. Retry later.",
+    "SERVER_ERROR": "The app is having problems right now. Retry later.",
+    "HOST_BLOCKED": "Blocked: the connector tried to reach a server other than {host}. Nothing was sent. The platform team has been alerted.",
+    "RULES_REJECTED": "This draft asked for something we never allow (for example a write or delete call). We discarded it.",
+    "DOCS_UNREADABLE": "We couldn't read these docs. Upload the app's OpenAPI file or try another docs link.",
+    "SSRF_BLOCKED": "That link points to a private or internal address. Use the app's public docs link.",
+    "SCHEMA_INVALID": "The AI's draft didn't fit the connector format, even after one retry. Add a hint and try again.",
+    "LLM_ERROR": "The AI service didn't answer: {detail}",
+    "BAD_INPUT": "Some connection details are missing or in the wrong format: {detail}",
+    "NO_DEMO_DATA": "There is no demo data for this app. Switch to a live tenant to test it.",
+    "CODEGEN_FAILED": "The generated code failed its checks. The platform team has been told.",
+}  # fmt: skip
+
+
+class State:
+    def __init__(self) -> None:
+        self.db = Database()
+        self.db.seed()
+        self.bus = EventBus()
+        self.vault = Vault(_vault_key())
+        self.bundles: dict[int, DocsBundle] = {}
+        self.ai_labels: dict[int, str] = {}
+
+    def settings(self) -> Settings:
+        settings = Settings()
+        if settings.sandbox == "docker" and not docker_available():
+            settings.sandbox = "subprocess"
+        return settings
+
+
+def _vault_key() -> str:
+    key = get("VAULT_KEY")
+    if key:
+        return key
+    # Local development only: a generated key kept beside the database, never committed.
+    path = PROTOTYPE / "data" / ".vault_key"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(Vault.new_master_key())
+        os.chmod(path, 0o600)
+    return path.read_text().strip()
+
+
+app = FastAPI(title="Integration builder prototype")
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
+_state: State | None = None
+
+
+def state() -> State:
+    global _state
+    if _state is None:
+        _state = State()
+    return _state
+
+
+def tenant_header(x_tenant: Annotated[str, Header()] = "acme") -> str:
+    if x_tenant not in TENANTS:
+        raise HTTPException(400, "Unknown tenant")
+    return x_tenant
+
+
+Tenant_ = Annotated[str, Depends(tenant_header)]
+State_ = Annotated[State, Depends(state)]
+
+
+def _internal(tenant: str) -> None:
+    if tenant != "internal":
+        raise HTTPException(403, "Platform team only")
+
+
+def _connector(s: Session, tenant: str, connector_id: int) -> Connector:
+    connector = s.get(Connector, connector_id)
+    if connector is None or (connector.tenant_id != tenant and tenant != "internal"):
+        raise HTTPException(404, "No such connector")
+    return connector
+
+
+def _latest(s: Session, connector_id: int) -> ConnectorVersion | None:
+    return s.scalar(
+        select(ConnectorVersion)
+        .where(ConnectorVersion.connector_id == connector_id)
+        .order_by(ConnectorVersion.version.desc())
+        .limit(1)
+    )
+
+
+def _message(code: str | None, spec: dict[str, Any] | None = None, detail: str = "", host: str = "") -> str | None:
+    if not code:
+        return None
+    template = PLAIN.get(code, code)
+    auth = (spec or {}).get("auth", {})
+    return template.format(
+        scopes=", ".join(auth.get("scopes", [])) or "no special scopes",
+        role=auth.get("role_required") or "admin",
+        app=(spec or {}).get("app", {}).get("name", "the app"),
+        host=host or (spec or {}).get("app", {}).get("api_host_pattern", "its own host"),
+        detail=detail,
+    )
+
+
+def _library_for(s: Session, app_name: str) -> LibrarySpec | None:
+    return s.scalar(
+        select(LibrarySpec)
+        .where(LibrarySpec.app == app_name, LibrarySpec.status == "approved")
+        .order_by(LibrarySpec.version.desc())
+        .limit(1)
+    )
+
+
+# --- tenants, inventory, library --------------------------------------------------------------
+
+
+@app.get("/api/tenants")
+def tenants(st: State_) -> list[dict[str, Any]]:
+    with st.db.session() as s:
+        return [
+            {"id": t.id, "name": t.name, "internal": t.is_internal, "run_mode": t.run_mode_default}
+            for t in s.scalars(select(Tenant))
+        ]
+
+
+@app.get("/api/status")
+def status(st: State_) -> dict[str, Any]:
+    settings = st.settings()
+    provider = ai_source.provider()
+    return {
+        "ai_provider": provider,
+        "ai_model": settings.draft_model if provider == "gemini" else None,
+        "sandbox": settings.sandbox,
+        "isolation_note": DEMO_ISOLATION_LABEL if settings.sandbox == "subprocess" else None,
+    }
+
+
+@app.get("/api/inventory")
+def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
+    today = datetime.now(UTC).date()
+    with st.db.session() as s:
+        t = s.get(Tenant, tenant)
+        if t and t.run_mode_default == "replay":
+            today = datetime(2026, 10, 29, tzinfo=UTC).date()  # the demo data's recording date
+        rows = []
+        for item in s.scalars(select(InventoryApp).where(InventoryApp.tenant_id == tenant)):
+            connector = s.scalar(
+                select(Connector)
+                .where(Connector.tenant_id == tenant, Connector.app == item.app)
+                .order_by(Connector.id.desc())
+                .limit(1)
+            )
+            library = _library_for(s, item.app)
+            usage_status = "Connected (native)" if item.app in {"Slack", "Zoom"} else "No usage data"
+            if connector is not None and connector.status.startswith("live"):
+                usage_status = "Connected" if connector.status == "live" else "Users only"
+            rows.append(
+                {
+                    "app": item.app,
+                    "owner": item.owner,
+                    "annual_cost": item.annual_cost,
+                    "seats": item.seats,
+                    "renewal_date": item.renewal_date.isoformat() if item.renewal_date else None,
+                    "days_to_renewal": (item.renewal_date - today).days if item.renewal_date else None,
+                    "usage_status": usage_status,
+                    "native": item.app in {"Slack", "Zoom"},
+                    "connector": {"id": connector.id, "status": connector.status} if connector else None,
+                    "in_library": library is not None,
+                    "library_spec_id": library.id if library else None,
+                }
+            )
+        return rows
+
+
+@app.get("/api/library")
+def library(st: State_) -> list[dict[str, Any]]:
+    with st.db.session() as s:
+        out = []
+        for spec in s.scalars(select(LibrarySpec).where(LibrarySpec.status == "approved")):
+            used = len(
+                list(
+                    s.scalars(
+                        select(Connector).where(Connector.from_library_id == spec.id, Connector.status.like("live%"))
+                    )
+                )
+            )
+            out.append(
+                {
+                    "id": spec.id,
+                    "app": spec.app,
+                    "version": spec.version,
+                    "tier": spec.spec_json.get("app", {}).get("tier"),
+                    "used_by": str(used) if used >= LIBRARY_MIN_SHOWN else "fewer than 5",
+                    "health": "healthy" if not spec.failure_rate else f"{spec.failure_rate:.0%} failing",
+                    "reviewed_by": spec.reviewed_by,
+                }
+            )
+        return out
+
+
+# --- connectors ---------------------------------------------------------------------------
+
+
+@app.post("/api/connectors")
+async def create_connector(
+    tenant: Tenant_,
+    st: State_,
+    app_name: Annotated[str, Form()],
+    docs_url: Annotated[str | None, Form()] = None,
+    from_library_spec_id: Annotated[int | None, Form()] = None,
+    openapi_file: Annotated[UploadFile | None, File()] = None,
+) -> dict[str, Any]:
+    openapi = await openapi_file.read() if openapi_file is not None else None
+    with st.db.session() as s:
+        t = s.get(Tenant, tenant)
+        connector = Connector(
+            tenant_id=tenant, app=app_name, status="draft", docs_url=docs_url,
+            run_mode=t.run_mode_default if t else "live", variables={},
+        )  # fmt: skip
+        s.add(connector)
+        s.flush()
+        connector_id = connector.id
+        if from_library_spec_id is not None:
+            spec = s.get(LibrarySpec, from_library_spec_id)
+            if spec is None or spec.status != "approved":
+                raise HTTPException(404, "Not in the library")
+            connector.from_library_id = spec.id
+            connector.tier = spec.spec_json["app"]["tier"]
+            s.add(
+                ConnectorVersion(
+                    connector_id=connector_id, version=1, spec_json=copy.deepcopy(spec.spec_json),
+                    created_by="library", approved_by=spec.reviewed_by,
+                )
+            )  # fmt: skip
+            s.commit()
+            st.bus.emit(connector_id, {"stage": "library", "status": "ok", "message": "From the platform library"})
+            st.bus.emit(connector_id, {"stage": "done", "status": "ok"})
+            return {"id": connector_id}
+        s.commit()
+    if not docs_url and openapi is None:
+        raise HTTPException(400, "Paste the app's API docs link or upload its OpenAPI file")
+    _start_draft(st, connector_id, app_name, docs_url or "", openapi, None)
+    return {"id": connector_id}
+
+
+def _start_draft(
+    st: State, connector_id: int, app_name: str, docs_url: str, openapi: bytes | None, hint: str | None
+) -> None:
+    st.bus.reset(connector_id)
+
+    def job() -> None:
+        def emit(event: dict[str, Any]) -> None:
+            st.bus.emit(connector_id, event)
+
+        if docs_url:
+            try:
+                check_url(docs_url)  # first, in every mode: no offline shortcut may skip it
+            except SSRFBlockedError as error:
+                _fail(st, connector_id, "SSRF_BLOCKED", str(error))
+                return
+        try:
+            llm, label = ai_source.llm_for(app_name)
+        except Exception as error:  # noqa: BLE001
+            _fail(st, connector_id, "LLM_ERROR", str(error))
+            return
+        st.ai_labels[connector_id] = label
+        emit({"stage": "ai", "status": "info", "message": label})
+        pipe = Pipeline(llm, Fetcher(), emit, st.settings())
+        bundle = st.bundles.get(connector_id)
+        if bundle is None and label != "Gemini":
+            bundle = _offline_bundle(docs_url)
+        try:
+            outcome = pipe.draft(app_name, docs_url, openapi, hint, bundle)
+        except PipelineError as error:
+            _fail(st, connector_id, error.code, error.message)
+            return
+        except Exception as error:  # noqa: BLE001
+            _fail(st, connector_id, "LLM_ERROR", f"{type(error).__name__}")
+            return
+        st.bundles[connector_id] = outcome.bundle
+        if label == "Gemini":
+            ai_source.save_recording(app_name, outcome.raw_draft)
+        with st.db.session() as s:
+            connector = s.get(Connector, connector_id)
+            assert connector is not None
+            latest = _latest(s, connector_id)
+            report = {
+                "verified": outcome.evidence.verified,
+                "failed": outcome.evidence.failed,
+                "dropped": outcome.dropped,
+                "pct": round(outcome.evidence.verified_pct, 1),
+            }
+            s.add(
+                ConnectorVersion(
+                    connector_id=connector_id, version=(latest.version + 1) if latest else 1, spec_json=outcome.spec,
+                    created_by="ai", evidence_report=report, llm_cost_usd=sum(c.cost_usd for c in outcome.llm_calls),
+                )
+            )  # fmt: skip
+            for call in outcome.llm_calls:
+                s.add(LlmCall(connector_id=connector_id, **call.__dict__))
+            connector.status, connector.tier = "draft", outcome.spec["app"]["tier"]
+            connector.error_code = connector.error_message = None
+            s.commit()
+        emit({"stage": "done", "status": "ok"})
+
+    run_in_background(job)
+
+
+def _offline_bundle(docs_url: str) -> DocsBundle | None:
+    """Recorded mode without network: use cached docs if we have them, else let the fetcher try."""
+    for cached in DOCS_CACHE.glob("*.json"):
+        data = json.loads(cached.read_text())
+        if data.get("start_url") == docs_url:
+            from app.services.docs_fetcher import DocPage
+
+            return DocsBundle(
+                docs_url, [DocPage(**p) for p in data["pages"]], data.get("openapi"), data.get("openapi_url")
+            )
+    try:
+        return Fetcher().fetch(docs_url, 20)
+    except Exception:  # noqa: BLE001 - offline demo: evidence will show as unproved, honestly
+        return DocsBundle(docs_url)
+
+
+def _fail(st: State, connector_id: int, code: str, message: str) -> None:
+    with st.db.session() as s:
+        connector = s.get(Connector, connector_id)
+        if connector is not None:
+            connector.status, connector.error_code, connector.error_message = "needs_help", code, message
+            s.commit()
+    st.bus.emit(
+        connector_id, {"stage": "done", "status": "fail", "code": code, "message": _message(code, detail=message)}
+    )
+
+
+@app.get("/api/connectors/{connector_id}/events")
+async def events(connector_id: int, tenant: Tenant_, st: State_) -> StreamingResponse:
+    with st.db.session() as s:
+        _connector(s, tenant, connector_id)
+
+    async def stream() -> AsyncIterator[str]:
+        seq = 0
+        for _ in range(3000):  # ~10 minutes
+            for event in st.bus.since(connector_id, seq):
+                seq = event["seq"] + 1
+                yield f"data: {json.dumps(event)}\n\n"
+                if event["stage"] == "done":
+                    return
+            await asyncio.sleep(0.2)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.get("/api/connectors/{connector_id}")
+def connector_detail(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        spec = version.spec_json if version else None
+        run = s.get(Run, c.last_run_id) if c.last_run_id else None
+        submitted = s.scalar(
+            select(LibrarySpec).where(LibrarySpec.app == c.app, LibrarySpec.submitted_from_tenant == c.tenant_id)
+        )
+        versions = list(
+            s.scalars(
+                select(ConnectorVersion)
+                .where(ConnectorVersion.connector_id == connector_id)
+                .order_by(ConnectorVersion.version)
+            )
+        )
+        return {
+            "id": c.id,
+            "app": c.app,
+            "tenant": c.tenant_id,
+            "status": c.status,
+            "tier": c.tier,
+            "run_mode": c.run_mode,
+            "docs_url": c.docs_url,
+            "from_library": c.from_library_id is not None,
+            "ai_source": st.ai_labels.get(c.id),
+            "error": {"code": c.error_code, "message": _message(c.error_code, spec, c.error_message or "")}
+            if c.error_code
+            else None,
+            "token_owner_email": c.token_owner_email,
+            "has_credentials": s.scalar(select(Credential).where(Credential.connector_id == c.id)) is not None,
+            "variables": c.variables,
+            "summary": _summary(spec) if spec else None,
+            "evidence": _evidence(spec, version.evidence_report if version else None) if spec else [],
+            "conflicts": (spec or {}).get("conflicts", []),
+            "warnings": (spec or {}).get("warnings", []),
+            "version": version.version if version else None,
+            "versions": [
+                {"version": v.version, "created_by": v.created_by, "created_at": v.created_at.isoformat()}
+                for v in versions
+            ],
+            "evidence_pct": (version.evidence_report or {}).get("pct") if version else None,
+            "last_run": _run_view(run, spec) if run else None,
+            "library": {"status": submitted.status, "id": submitted.id} if submitted else None,
+            "confirm_note": c.confirm_note,
+        }
+
+
+def _summary(spec: dict[str, Any]) -> dict[str, Any]:
+    auth, users, usage = spec["auth"], spec["streams"]["users"], spec["streams"]["usage"]
+    usage_def = spec["usage_definition"]
+    return {
+        "login": {
+            "type": auth["type"],
+            "role_required": auth.get("role_required"),
+            "scopes": auth.get("scopes", []),
+            "setup_steps": auth.get("setup_steps", []),
+            "fields": auth["fields"],
+            "variables": spec.get("variables", []),
+        },
+        "users": {
+            "path": users["path"],
+            "records_path": users["records_path"],
+            "pagination": users["pagination"]["type"],
+            "fields": sorted(users["field_map"]),
+        },
+        "usage": {
+            "tier": spec["app"]["tier"],
+            "tier_reason": spec["app"]["tier_reason"],
+            "label": usage_def.get("metric_label"),
+            "proxy": usage_def.get("proxy"),
+            "fallback": usage_def.get("fallback"),
+            "path": usage["path"] if usage else None,
+            "window_days": usage["aggregate"]["window_days"] if usage else None,
+        },
+        "limits": {
+            "requests_per_minute": spec["rate_limit"]["requests_per_minute"],
+            "plan_note": spec["rate_limit"].get("plan_note"),
+        },
+        "host": spec["app"]["api_host_pattern"],
+    }
+
+
+def _value_at(spec: dict[str, Any], pointer: str) -> Any:
+    node: Any = spec
+    for part in pointer.strip("/").split("/"):
+        node = node.get(part) if isinstance(node, dict) else None
+    return node
+
+
+def _evidence(spec: dict[str, Any], report: dict[str, Any] | None) -> list[dict[str, Any]]:
+    out = []
+    verified = set((report or {}).get("verified", []))
+    failed = (report or {}).get("failed", {})
+    for pointer in evidence_check.required_pointers(spec):
+        item = evidence_check._evidence_for(spec.get("evidence", {}), pointer)  # noqa: SLF001
+        out.append(
+            {
+                "field": pointer,
+                "value": _value_at(spec, pointer),
+                "quote": (item or {}).get("quote"),
+                "url": (item or {}).get("url"),
+                "openapi_pointer": (item or {}).get("pointer"),
+                "verified": pointer in verified,
+                "problem": failed.get(pointer) if spec.get("origin") == "ai" else "hand-written (no evidence needed)",
+            }
+        )
+    return out
+
+
+class Hint(BaseModel):
+    text: str
+
+
+@app.post("/api/connectors/{connector_id}/hint")
+def hint(connector_id: int, body: Hint, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        names = [u.name or "" for u in s.scalars(select(AppUser).where(AppUser.tenant_id == tenant))]
+        secrets = list(_secrets(s, st, c).values())
+        app_name, docs_url = c.app, c.docs_url or ""
+    scrubbed = scrub_hint(body.text, secrets, names)
+    _start_draft(st, connector_id, app_name, docs_url, None, scrubbed)
+    return {"scrubbed_hint": scrubbed}
+
+
+class Credentials(BaseModel):
+    secrets: dict[str, str] = {}
+    variables: dict[str, str] = {}
+    token_owner_email: str | None = None
+
+
+@app.post("/api/connectors/{connector_id}/credentials")
+def credentials(connector_id: int, body: Credentials, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    """Write-only: secrets are sealed in the vault and never returned or logged."""
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        sealed = st.vault.seal(tenant, connector_id, {k: v for k, v in body.secrets.items() if v})
+        s.execute(delete(Credential).where(Credential.connector_id == connector_id))
+        s.add(
+            Credential(
+                connector_id=connector_id, ciphertext=sealed.ciphertext, nonce=sealed.nonce, key_id=sealed.key_id
+            )
+        )
+        c.variables = {k: v.strip() for k, v in body.variables.items()}
+        c.token_owner_email = (body.token_owner_email or "").strip().lower() or None
+        s.commit()
+    return {"saved": True}
+
+
+def _secrets(s: Session, st: State, c: Connector) -> dict[str, str]:
+    cred = s.scalar(select(Credential).where(Credential.connector_id == c.id))
+    if cred is None:
+        return {}
+    return st.vault.open(c.tenant_id, c.id, Sealed(cred.ciphertext, cred.nonce, cred.key_id))
+
+
+class TestRequest(BaseModel):
+    run_mode: str | None = None
+
+
+@app.post("/api/connectors/{connector_id}/test")
+def test(connector_id: int, body: TestRequest, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        if version is None:
+            raise HTTPException(409, "Nothing to test yet")
+        spec = copy.deepcopy(version.spec_json)
+        run_mode = body.run_mode or c.run_mode
+        run_id = str(uuid.uuid4())
+        payload: dict[str, Any] = {
+            "run_mode": run_mode,
+            "variables": dict(c.variables or {}),
+            "context": {"tenant": tenant, "run_id": run_id, "connector": slug_for(c.app), "version": version.version},
+        }
+        if run_mode == "replay":
+            recording = REPLAY / slug_for(spec["app"]["name"]) / "recording.json"
+            if not recording.exists():
+                raise HTTPException(409, _message("NO_DEMO_DATA"))
+            payload["replay_file"] = str(recording)
+        else:
+            payload["secrets"] = _secrets(s, st, c)
+        c.status = "testing"
+        start_version = version.version
+        s.commit()
+    st.bus.reset(connector_id)
+    _start_test(st, connector_id, tenant, spec, payload, run_id, start_version)
+    return {"run_id": run_id}
+
+
+def _start_test(
+    st: State, connector_id: int, tenant: str, spec: dict[str, Any], payload: dict[str, Any], run_id: str, version: int
+) -> None:
+    def job() -> None:
+        def emit(event: dict[str, Any]) -> None:
+            st.bus.emit(connector_id, event)
+
+        try:
+            llm, _ = ai_source.llm_for(spec["app"]["name"])
+        except Exception:  # noqa: BLE001 - tests still run; only repairs need the model
+            llm = ai_source.RecordedLLM(spec["app"]["name"])
+        settings = st.settings()
+        pipe = Pipeline(llm, Fetcher(), emit, settings)
+        started = datetime.now(UTC)
+        try:
+            outcome = pipe.test(spec, payload, st.bundles.get(connector_id), version)
+        except PipelineError as error:
+            _fail(st, connector_id, error.code, error.message)
+            return
+        result = outcome.result
+        summary = result.result
+        with st.db.session() as s:
+            c = s.get(Connector, connector_id)
+            assert c is not None
+            final_version = version
+            for repair in outcome.repairs:
+                if repair["accepted"]:
+                    final_version += 1
+            if final_version != version:
+                s.add(
+                    ConnectorVersion(
+                        connector_id=connector_id, version=final_version, spec_json=outcome.spec,
+                        created_by="repair", code=outcome.code,
+                    )
+                )  # fmt: skip
+            for call in outcome.llm_calls:
+                s.add(LlmCall(connector_id=connector_id, **call.__dict__))
+            kept = [line for line in result.lines if line.get("type") in ("progress", "log", "result")]
+            s.add(
+                Run(
+                    id=run_id, connector_id=connector_id, version=final_version, mode="test",
+                    run_mode=payload["run_mode"], sandbox=result.sandbox,
+                    status=summary.get("status", "error") if summary.get("status") in ("ok", "partial", "error") else "error",
+                    exit_code=result.exit_code, error_code=summary.get("error_code"),
+                    usage_error_code=summary.get("usage_error_code"),
+                    summary={**summary.get("summary", {}), "repairs": outcome.repairs, "isolation": result.isolation_note},
+                    repair_try=len(outcome.repairs), started_at=started, finished_at=datetime.now(UTC), lines=kept,
+                )
+            )  # fmt: skip
+            c.last_run_id = run_id
+            if result.exit_code == 0:
+                s.execute(delete(AppUser).where(AppUser.connector_id == connector_id))
+                for record in result.records:
+                    s.add(_app_user(tenant, connector_id, record))
+                c.status, c.error_code, c.error_message = "testing", None, None
+                c.usage_available = any(r.get("usage_available") for r in result.records)
+            else:
+                code = summary.get("error_code") or "SERVER_ERROR"
+                c.error_code, c.error_message = code, summary.get("error_code")
+                c.status = "needs_help" if result.exit_code in (4, 6, 8) else "testing"
+                if result.exit_code == 8:
+                    s.add(
+                        AuditEvent(
+                            tenant_id=tenant, actor="sandbox", action="security.host_blocked",
+                            target=c.app, detail={"run_id": run_id, "blocked": result.blocked_calls},
+                        )
+                    )  # fmt: skip
+            s.commit()
+        emit({"stage": "done", "status": "ok" if result.exit_code == 0 else "fail", "run_id": run_id})
+
+    run_in_background(job)
+
+
+def _app_user(tenant: str, connector_id: int, record: dict[str, Any]) -> AppUser:
+    fields = {k: v for k, v in record.items() if k != "source"}
+    for key in ("last_active_at",):
+        if fields.get(key):
+            fields[key] = h.parse_time(fields[key])
+    return AppUser(tenant_id=tenant, connector_id=connector_id, source=record.get("source", {}), **fields)
+
+
+@app.get("/api/runs/{run_id}")
+def run_detail(run_id: str, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        run = s.get(Run, run_id)
+        if run is None:
+            raise HTTPException(404, "No such run")
+        c = _connector(s, tenant, run.connector_id)
+        version = _latest(s, c.id)
+        return _run_view(run, version.spec_json if version else None, full=True)
+
+
+def _run_view(run: Run, spec: dict[str, Any] | None, full: bool = False) -> dict[str, Any]:
+    lines = run.lines or []
+    checklist: dict[str, str] = {}
+    for line in lines:
+        if line.get("type") == "progress":
+            checklist[str(line["step"])] = str(line["status"])
+    view: dict[str, Any] = {
+        "id": run.id,
+        "status": run.status,
+        "exit_code": run.exit_code,
+        "error_code": run.error_code,
+        "usage_error_code": run.usage_error_code,
+        "message": _message(run.error_code, spec),
+        "usage_message": _message(run.usage_error_code, spec),
+        "summary": run.summary,
+        "checklist": checklist,
+        "sandbox": run.sandbox,
+        "run_mode": run.run_mode,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+    }
+    if full:
+        view["logs"] = [line for line in lines if line.get("type") == "log"]
+    return view
+
+
+# --- cross-check and savings ---------------------------------------------------------------
+
+
+@app.post("/api/crosscheck/upload")
+async def upload(
+    tenant: Tenant_,
+    st: State_,
+    hris: Annotated[UploadFile | None, File(alias="hris.csv")] = None,
+    sso: Annotated[UploadFile | None, File(alias="sso.csv")] = None,
+    contract: Annotated[UploadFile | None, File(alias="contract.json")] = None,
+) -> dict[str, Any]:
+    saved = []
+    with st.db.session() as s:
+        for kind, upload_file in (("hris", hris), ("sso", sso), ("contract", contract)):
+            if upload_file is None:
+                continue
+            content = (await upload_file.read()).decode("utf-8")
+            s.execute(delete(CrosscheckFile).where(CrosscheckFile.tenant_id == tenant, CrosscheckFile.kind == kind))
+            s.add(CrosscheckFile(tenant_id=tenant, kind=kind, filename=upload_file.filename or kind, content=content))
+            saved.append(kind)
+        s.commit()
+    return {"saved": saved}
+
+
+@app.get("/api/connectors/{connector_id}/savings")
+def savings_preview(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        if version is None:
+            raise HTTPException(409, "No connector yet")
+        files = {
+            f.kind: f.content for f in s.scalars(select(CrosscheckFile).where(CrosscheckFile.tenant_id == c.tenant_id))
+        }
+        users = [_user_dict(u) for u in s.scalars(select(AppUser).where(AppUser.connector_id == connector_id))]
+        contract = files.get("contract")
+        if contract is None:
+            item = s.scalar(
+                select(InventoryApp).where(InventoryApp.tenant_id == c.tenant_id, InventoryApp.app == c.app)
+            )
+            if item is not None and item.seats:
+                contract = json.dumps(
+                    [{"app": c.app, "seats": item.seats, "annual_cost": item.annual_cost,
+                      "renewal_date": item.renewal_date.isoformat() if item.renewal_date else None}]
+                )  # fmt: skip
+        parsed = savings.parse_files(c.app, files.get("hris"), files.get("sso"), contract)
+        today = datetime(2026, 10, 29, 9, tzinfo=UTC) if c.run_mode == "replay" else datetime.now(UTC)
+        result = savings.compute(c.app, users, version.spec_json, parsed, c.token_owner_email, today)
+        out = result.to_dict()
+        out["contract_source"] = (
+            "contract.json" if files.get("contract") and contract_for(contract or "", c.app) else "inventory"
+        )
+        out["run_mode"] = c.run_mode
+        token_owner = (c.token_owner_email or "").lower()
+        hr_row = parsed.hris.get(token_owner) if token_owner else None
+        out["token_owner_warning"] = (
+            f"The token owner leaves on {hr_row.get('termination_date') or 'a set date'}: switch to a service account."
+            if hr_row and hr_row.get("employment_status") == "terminated"
+            else None
+        )
+        return out
+
+
+def _user_dict(u: AppUser) -> dict[str, Any]:
+    return {
+        "external_id": u.external_id, "email": u.email, "name": u.name, "role": u.role, "status": u.status,
+        "is_admin": u.is_admin, "is_billable": u.is_billable,
+        "last_active_at": u.last_active_at.replace(tzinfo=UTC).isoformat() if u.last_active_at else None,
+        "usage_metric_value": u.usage_metric_value, "usage_available": u.usage_available,
+        "usage_is_proxy": u.usage_is_proxy, "excluded_reason": u.excluded_reason,
+    }  # fmt: skip
+
+
+class Confirm(BaseModel):
+    accept: bool
+    users_only: bool = False
+    note: str | None = None
+
+
+@app.post("/api/connectors/{connector_id}/confirm")
+def confirm(connector_id: int, body: Confirm, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    preview = savings_preview(connector_id, tenant, st)
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        run = s.get(Run, c.last_run_id) if c.last_run_id else None
+        if not body.accept or run is None or run.exit_code != 0:
+            raise HTTPException(409, "A passing test is needed before going live")
+        if preview["needs_note"] and not (body.note or "").strip():
+            raise HTTPException(422, "The user count differs from SSO by more than 2%. Add a note to confirm.")
+        users_only = body.users_only or run.status == "partial" or not c.usage_available
+        c.status = "live_users_only" if users_only else "live"
+        c.confirm_note = (body.note or "").strip() or None
+        s.commit()
+        return {"status": c.status}
+
+
+# --- library ---------------------------------------------------------------------------------
+
+
+@app.post("/api/connectors/{connector_id}/submit-to-library")
+def submit(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        if version is None or not c.status.startswith("live"):
+            raise HTTPException(409, "Only a live, healthy connector can be submitted")
+        spec = copy.deepcopy(version.spec_json)
+        flags = _review_flags(spec)
+        latest = s.scalar(
+            select(LibrarySpec).where(LibrarySpec.app == c.app).order_by(LibrarySpec.version.desc()).limit(1)
+        )
+        entry = LibrarySpec(
+            app=c.app, spec_json=spec, version=(latest.version + 1) if latest else 1, status="pending_review",
+            submitted_from_tenant=c.tenant_id, flags=flags,
+        )  # fmt: skip
+        s.add(entry)
+        s.commit()
+        return {"library_spec_id": entry.id, "status": entry.status, "flags": flags}
+
+
+def _review_flags(spec: dict[str, Any]) -> list[str]:
+    """The spec holds no customer values (secrets, subdomains, users stay with the tenant); these need a human look."""
+    flags = []
+    for target, value in spec["streams"]["users"]["field_map"].items():
+        path = value if isinstance(value, str) else value.get("path", "")
+        if "custom" in str(path).lower():
+            flags.append(f"Custom field path in {target}: {path}")
+    if spec.get("origin") == "ai":
+        flags.append("AI-drafted: check the evidence quotes")
+    for warning in spec.get("warnings", []):
+        if warning.startswith("Not proved by the docs"):
+            flags.append(warning)
+    return flags
+
+
+@app.get("/api/library/review-queue")
+def review_queue(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
+    _internal(tenant)
+    with st.db.session() as s:
+        return [
+            {
+                "id": e.id, "app": e.app, "version": e.version, "status": e.status, "flags": e.flags or [],
+                "submitted_from": "a customer tenant", "tier": e.spec_json["app"]["tier"],
+                "host": e.spec_json["app"]["api_host_pattern"],
+                "summary": _summary(e.spec_json),
+                "code": render(e.spec_json, e.version),
+            }
+            for e in s.scalars(select(LibrarySpec).order_by(LibrarySpec.id.desc()))
+        ]  # fmt: skip
+
+
+class Review(BaseModel):
+    note: str | None = None
+
+
+@app.post("/api/library/{spec_id}/{decision}")
+def review(spec_id: int, decision: str, body: Review, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    _internal(tenant)
+    if decision not in ("approve", "reject"):
+        raise HTTPException(404, "Unknown action")
+    with st.db.session() as s:
+        entry = s.get(LibrarySpec, spec_id)
+        if entry is None or entry.status != "pending_review":
+            raise HTTPException(409, "Not waiting for review")
+        entry.status = "approved" if decision == "approve" else "rejected"
+        entry.reviewed_by, entry.reviewed_at, entry.review_note = "platform engineer", datetime.now(UTC), body.note
+        s.commit()
+        return {"status": entry.status}
+
+
+# --- code, data card, actions ------------------------------------------------------------------
+
+
+@app.get("/api/connectors/{connector_id}/code", response_class=PlainTextResponse)
+def code(connector_id: int, tenant: Tenant_, st: State_) -> str:
+    with st.db.session() as s:
+        _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        if version is None:
+            raise HTTPException(409, "No connector yet")
+        return version.code or render(version.spec_json, version.version)
+
+
+@app.get("/api/connectors/{connector_id}/data-card", response_class=PlainTextResponse)
+def data_card(connector_id: int, tenant: Tenant_, st: State_) -> str:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        version = _latest(s, connector_id)
+        if version is None:
+            raise HTTPException(409, "No connector yet")
+        spec = version.spec_json
+        summary = _summary(spec)
+        paths = [spec["streams"]["users"]["path"]] + (
+            [spec["streams"]["usage"]["path"]] if spec["streams"]["usage"] else []
+        )
+        evidence = sorted({e.get("url", "") for e in spec.get("evidence", {}).values() if e.get("url")})
+        lines = [
+            f"# Data card: {c.app} connector v{version.version}",
+            "",
+            f"- **Host:** {summary['host']} (https only; the sandbox blocks every other host)",
+            f"- **Calls:** GET only: {', '.join(p for p in [b['path'] for b in spec['bootstrap']] + paths)}",
+            f"- **Login:** {summary['login']['type']}; scopes: {', '.join(summary['login']['scopes']) or 'none'}; role: {summary['login']['role_required'] or '—'}",
+            "- **Fields stored:** id, email, name, role, status, admin flag, licence, last active, usage value",
+            "- **Not stored:** raw API responses, tokens in clear text (AES-GCM vault, per-customer key)",
+            "- **Retention:** user records deleted 30 days after the connector is removed",
+            "- **Egress:** one host per run through a per-run egress proxy; static egress IPs on request",
+            f"- **Plan / role needs:** {'; '.join(spec.get('warnings', [])) or '—'}",
+            "",
+            "**Evidence links:**",
+            *(f"- {url}" for url in evidence),
+        ]  # fmt: skip
+        return "\n".join(lines) + "\n"
+
+
+@app.post("/api/connectors/{connector_id}/pause")
+def pause(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        c.status = "paused"
+        s.commit()
+        return {"status": c.status}
+
+
+@app.delete("/api/connectors/{connector_id}")
+def remove(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        for table in (AppUser, Credential, ConnectorVersion):
+            s.execute(delete(table).where(table.connector_id == connector_id))
+        s.delete(c)
+        s.commit()
+    return {"deleted": True}
+
+
+# --- static frontend (built) -------------------------------------------------------------------
+
+FRONTEND = PROTOTYPE / "frontend" / "dist"
+if FRONTEND.exists():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=FRONTEND, html=True), name="frontend")

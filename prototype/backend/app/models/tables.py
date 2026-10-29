@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -96,6 +97,12 @@ class Connector(Base):
     run_mode: Mapped[str] = mapped_column(String(10), default="live")
     token_owner_email: Mapped[str | None] = mapped_column(String(320))
     usage_available: Mapped[bool] = mapped_column(Boolean, default=False)
+    docs_url: Mapped[str | None] = mapped_column(String(500))
+    variables: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # non-secret, e.g. subdomain
+    last_run_id: Mapped[str | None] = mapped_column(String(36))
+    error_code: Mapped[str | None] = mapped_column(String(40))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    confirm_note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -106,11 +113,13 @@ class ConnectorVersion(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     connector_id: Mapped[int] = mapped_column(ForeignKey("connectors.id"))
     version: Mapped[int] = mapped_column(Integer)
-    spec_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    spec_json: Mapped[dict[str, Any]] = mapped_column(JSON)
     code: Mapped[str | None] = mapped_column(Text)
     code_sha256: Mapped[str | None] = mapped_column(String(64))
-    created_by: Mapped[str] = mapped_column(String(100))  # "ai", "hand_written", or a person
+    created_by: Mapped[str] = mapped_column(String(100))  # "ai", "repair", "library", or a person
     approved_by: Mapped[str | None] = mapped_column(String(100))
+    evidence_report: Mapped[dict[str, Any] | None] = mapped_column(JSON)  # verified / failed / dropped
+    llm_cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -123,13 +132,14 @@ class LibrarySpec(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     app: Mapped[str] = mapped_column(String(100))
-    spec_json: Mapped[dict[str, object]] = mapped_column(JSON)  # customer-specific values stripped
+    spec_json: Mapped[dict[str, Any]] = mapped_column(JSON)  # customer-specific values stripped
     version: Mapped[int] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(20), default="pending_review")
     submitted_from_tenant: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     reviewed_by: Mapped[str | None] = mapped_column(String(100))
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     review_note: Mapped[str | None] = mapped_column(Text)
+    flags: Mapped[list[str] | None] = mapped_column(JSON)  # things the reviewer must look at
     used_by_count: Mapped[int] = mapped_column(Integer, default=0)
     failure_rate: Mapped[float | None] = mapped_column(Float)
     canary_status: Mapped[str | None] = mapped_column(String(20))
@@ -176,8 +186,9 @@ class Run(Base):
     exit_code: Mapped[int | None] = mapped_column(Integer)
     error_code: Mapped[str | None] = mapped_column(String(40))
     usage_error_code: Mapped[str | None] = mapped_column(String(40))
-    summary: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    summary: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     repair_try: Mapped[int] = mapped_column(Integer, default=0)
+    lines: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)  # progress + redacted request logs
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -227,7 +238,7 @@ class AppUser(Base):
     usage_is_proxy: Mapped[bool] = mapped_column(Boolean, default=False)
     usage_source: Mapped[str | None] = mapped_column(String(20))
     excluded_reason: Mapped[str | None] = mapped_column(String(50))
-    source: Mapped[dict[str, object]] = mapped_column(JSON)
+    source: Mapped[dict[str, Any]] = mapped_column(JSON)
 
 
 class CrosscheckFile(Base):
@@ -289,7 +300,7 @@ class AuditEvent(Base):
     actor: Mapped[str] = mapped_column(String(100))
     action: Mapped[str] = mapped_column(String(60))
     target: Mapped[str | None] = mapped_column(String(200))
-    detail: Mapped[dict[str, object] | None] = mapped_column(JSON)
+    detail: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

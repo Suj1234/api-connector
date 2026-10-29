@@ -60,6 +60,7 @@ class DraftOutcome:
     evidence: evidence_check.EvidenceReport
     dropped: list[str]
     llm_calls: list[LLMCallLog] = field(default_factory=list)
+    raw_draft: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -164,7 +165,7 @@ class Pipeline:
             draft = self._ask("evidence_reask", self.settings.draft_model, system, reask, DRAFT_SCHEMA, calls).data
             spec = draft_to_spec(draft)
             report = evidence_check.check(spec, bundle)
-        dropped = evidence_check.drop_unproven_optional(spec, report)
+        dropped = evidence_check.drop_unproven_optional(spec, report, bool(bundle.pages or bundle.openapi))
         evidence_check.settle_conflicts(spec)
         self._event(
             "evidence",
@@ -181,7 +182,7 @@ class Pipeline:
             self._event("rules", "fail", f"{first.pointer}: {first.message}", code=code)
             raise PipelineError(code, f"{first.pointer}: {first.message}")
         self._event("rules", "ok", "Read-only, one host, no secrets in URLs")
-        return DraftOutcome(spec, bundle, report, dropped, calls)
+        return DraftOutcome(spec, bundle, report, dropped, calls, draft)
 
     # --- P6–P8 ----------------------------------------------------------------------
 

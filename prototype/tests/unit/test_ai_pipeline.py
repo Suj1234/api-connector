@@ -348,3 +348,18 @@ def test_scrubbed_hint_reaches_the_prompt() -> None:
     hint = scrub_hint("Users live at /users; contact bob@acme.com", user_names=["Bob"])
     pipeline(llm, []).draft("Example App", f"{ROOT}/reference", hint=hint)
     assert "Users live at /users" in llm.prompts[0] and "bob@acme.com" not in llm.prompts[0]
+
+
+def test_email_is_never_dropped_and_nothing_is_dropped_without_docs() -> None:
+    spec = good_spec()
+    spec["evidence"]["/streams/users/field_map"] = ev("/reference/users", "nothing like this on the page")
+    llm = ScriptedLLM([spec_to_draft(spec), spec_to_draft(spec)])
+    outcome = pipeline(llm, []).draft("Example App", f"{ROOT}/reference")
+    assert "email" in outcome.spec["streams"]["users"]["field_map"]  # flagged, not dropped
+    assert "/streams/users/field_map/last_active_at" in outcome.dropped
+
+    from app.services.docs_fetcher import DocsBundle
+
+    llm = ScriptedLLM([spec_to_draft(spec), spec_to_draft(spec)])
+    offline = pipeline(llm, []).draft("Example App", f"{ROOT}/reference", bundle=DocsBundle(f"{ROOT}/reference"))
+    assert offline.dropped == [] and "last_active_at" in offline.spec["streams"]["users"]["field_map"]

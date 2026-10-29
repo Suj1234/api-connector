@@ -7,6 +7,7 @@ from pathlib import Path
 
 PROTOTYPE = Path(__file__).resolve().parents[2]
 ENV_FILE = PROTOTYPE / ".env"
+DOCS_CACHE = PROTOTYPE / "data" / "docs_cache"  # fetched public docs, shared by the benchmark and offline demos
 
 
 def load_env(path: Path = ENV_FILE) -> None:

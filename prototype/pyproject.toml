@@ -18,6 +18,9 @@ dependencies = [
   "trafilatura>=1.12",
   "jsonpatch>=1.33",
   "pyyaml>=6.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +42,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 "tests/**" = ["E501"]
 "fixtures/**" = ["E501"]
 "benchmark/**" = ["E501"]
+"backend/app/api.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "runtime", "runner"]

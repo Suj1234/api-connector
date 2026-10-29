@@ -35,7 +35,8 @@ DOCS_URLS = {
     "zendesk": "https://developer.zendesk.com/api-reference/ticketing/users/users/",
     "notion": "https://developers.notion.com/reference/get-users",
 }
-CACHE = ROOT / "data" / "docs_cache"
+from app.config import DOCS_CACHE as CACHE  # noqa: E402
+
 OUT = ROOT / "benchmark"
 
 
