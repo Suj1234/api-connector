@@ -633,7 +633,7 @@ prototype/
   - the capability name.
 - **Gemini:**
   - the model IDs and prices on the pricing page;
-  - the exact `google-genai` call shape for schema-constrained output (the docs now show `response_format` with `mime_type` + `schema`).
+  - the exact `google-genai` call shape for schema-constrained output. **Checked 29 Oct 2026:** `google-genai` 2.34 takes `GenerateContentConfig(response_mime_type="application/json", response_json_schema=...)`; there is no `response_format` in this SDK version. The prototype uses the SDK's names.
 
 ## 15. Tests
 

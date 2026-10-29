@@ -31,6 +31,7 @@ from runtime.errors import EXIT_OK, EXIT_OTHER, PARTIAL_OK_USAGE_CODES, Connecto
 from runtime.logs import RunLogger
 from runtime.transport import AllowOnlyHost, ReplayTransport, load_recording
 
+REPAIRABLE_CODES = {"WRONG_REQUEST", "MAPPING_FAILED", "PAGINATION_LOOP", "CURSOR_EXPIRED"}
 MAPPING_FAILURE_LIMIT = 0.2  # TRD §7: more than 20% of records missing a required field
 REPLAY_SECRET = "replay-demo"
 DEFAULT_LIMITS: dict[str, dict[str, int | None]] = {
@@ -87,6 +88,8 @@ def run(
         state.error_code = error.code
         if client is not None:
             state.pages = client.pages
+            if error.code in REPAIRABLE_CODES and client.last_shape is not None:
+                emit({"type": "shape", "error_code": error.code, "shape": client.last_shape})
         _result(emit, state)
         return error.exit_code
     except Exception as error:  # noqa: BLE001 - never leak a traceback with values to stdout

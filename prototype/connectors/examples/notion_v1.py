@@ -70,6 +70,7 @@ class Client:
         self.sleep = sleep
         self.pages: dict[str, int] = {"users": 0, "usage": 0}
         self.warnings: list[str] = []
+        self.last_shape: Any = None  # keys and types of the last response, for repair; never values
         self._last_request = 0.0
         timeout_s = limits.get("timeout_s")
         self._deadline = time.monotonic() + timeout_s if timeout_s else None
@@ -151,9 +152,11 @@ class Client:
 
     def _json(self, response: httpx.Response) -> Any:
         try:
-            return response.json()
+            body = response.json()
         except json.JSONDecodeError:
             raise ConnectorError("WRONG_REQUEST", response.status_code, "response is not JSON") from None
+        self.last_shape = h.shape(body)
+        return body
 
     def _rate_limit_wait(self, response: httpx.Response, tries: int) -> float:
         for header in (RETRY_AFTER_HEADER, "Retry-After", RESET_SECONDS_HEADER):

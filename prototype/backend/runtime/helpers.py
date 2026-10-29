@@ -167,3 +167,20 @@ def active_rule_passes(record: Mapping[str, Any], rule: Mapping[str, Any] | None
             return None
         return now - when <= timedelta(days=rule["value"])
     return None
+
+
+def shape(value: Any, depth: int = 0) -> Any:
+    """Keys and types only, never values: the masked sample a repair may see (TRD §8 P8)."""
+    if depth > 4:
+        return "..."
+    if isinstance(value, dict):
+        return {str(k): shape(v, depth + 1) for k, v in list(value.items())[:40]}
+    if isinstance(value, list):
+        return [shape(value[0], depth + 1)] if value else []
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int | float):
+        return "number"
+    if isinstance(value, str):
+        return "string"
+    return "null"

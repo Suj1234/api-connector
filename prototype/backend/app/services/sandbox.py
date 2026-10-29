@@ -71,6 +71,28 @@ class SandboxResult:
         return [e for e in self.egress_log if e.get("event") == "blocked"]
 
 
+def source_fingerprint() -> str:
+    """Hash of the code baked into the runner image; a stale image must never run silently."""
+    import hashlib
+
+    digest = hashlib.sha256()
+    files = sorted([*(BACKEND / "runtime").glob("*.py"), *(BACKEND / "runner").glob("*.py")])
+    files.append(BACKEND / "app" / "models" / "canonical.py")
+    for path in files:
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:16]
+
+
+class StaleImageError(RuntimeError):
+    pass
+
+
+def image_fingerprint() -> str | None:
+    done = _docker("image", "inspect", "--format", '{{ index .Config.Labels "source_fingerprint" }}', RUNNER_IMAGE)
+    return done.stdout.strip() or None if done.returncode == 0 else None
+
+
 def docker_available() -> bool:
     if shutil.which("docker") is None:
         return False
@@ -104,6 +126,8 @@ def run_connector(
         module.write_text(code)
         os.chmod(module, 0o644)
         if sandbox == "docker":
+            if image_fingerprint() != source_fingerprint():
+                raise StaleImageError("The sandbox image is out of date with the runtime code: run docker/build.sh")
             return _run_docker(work, payload, host, mode, timeout, egress_network, extra_ca_file)
         return _run_subprocess(module, payload, mode, timeout)
 
@@ -158,6 +182,18 @@ def _docker(*args: str, timeout: int = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["docker", *args], capture_output=True, text=True, timeout=timeout, check=False)
 
 
+def _wait_for_proxy(name: str, seconds: float = 10.0) -> None:
+    """The runner must not start before the proxy listens, or its first call fails."""
+    import time
+
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if any(line.get("event") == "ready" for line in _parse(_docker("logs", name).stdout)):
+            return
+        time.sleep(0.1)
+    raise RuntimeError("the egress proxy did not start")
+
+
 def _run_docker(
     work: Path,
     payload: dict[str, Any],
@@ -193,6 +229,7 @@ def _run_docker(
                 EGRESS_IMAGE,
             ).check_returncode()  # fmt: skip
             _docker("network", "connect", network, proxy_name).check_returncode()
+            _wait_for_proxy(proxy_name)
             net_args = ["--network", network, "-e", f"HTTPS_PROXY=http://{proxy_name}:3128"]
         else:
             net_args = ["--network", "none"]

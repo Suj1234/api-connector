@@ -13,10 +13,16 @@ dependencies = [
   "jsonschema>=4.22",
   "jmespath>=1.0",
   "cryptography>=42",
+  "google-genai>=2.0",
+  "rapidfuzz>=3.0",
+  "trafilatura>=1.12",
+  "jsonpatch>=1.33",
+  "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "types-jsonschema"]
+dev = ["pytest>=8", "types-jsonschema", "types-PyYAML"]
+browser = ["playwright>=1.40"]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "backend"]
@@ -32,6 +38,7 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["E501"]
 "fixtures/**" = ["E501"]
+"benchmark/**" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "runtime", "runner"]
@@ -42,5 +49,5 @@ mypy_path = "backend"
 packages = ["app", "runtime", "runner"]
 
 [[tool.mypy.overrides]]
-module = ["jmespath", "jmespath.*"]
+module = ["jmespath", "jmespath.*", "trafilatura", "trafilatura.*", "jsonpatch", "playwright", "playwright.*"]
 ignore_missing_imports = true

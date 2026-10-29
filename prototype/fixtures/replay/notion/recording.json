@@ -7,7 +7,7 @@
    "method": "GET",
    "url": "https://api.notion.com/v1/users",
    "query": {
-    "page_size": "100"
+    "page_size": "*"
    },
    "body": {
     "object": "list",
@@ -465,7 +465,7 @@
    "method": "GET",
    "url": "https://api.notion.com/v1/users",
    "query": {
-    "page_size": "100",
+    "page_size": "*",
     "start_cursor": "cursor-users-1"
    },
    "body": {

@@ -6,6 +6,9 @@ cd "$(dirname "$0")/.."
 BASE="${BASE_IMAGE:-python:3.12-slim}"
 SECRET=""
 if [ -n "$CA_BUNDLE" ]; then SECRET="--secret id=ca,src=$CA_BUNDLE"; fi
-docker build $SECRET --build-arg BASE_IMAGE="$BASE" -f docker/runner.Dockerfile -t integration-runner:dev .
-docker build --build-arg BASE_IMAGE="$BASE" -f docker/egress-proxy/Dockerfile -t integration-egress:dev .
-echo "Sandbox images ready: integration-runner:dev, integration-egress:dev"
+PY="${PYTHON:-.venv/bin/python}"
+FINGERPRINT=$(PYTHONPATH=backend "$PY" -c "from app.services.sandbox import source_fingerprint; print(source_fingerprint())")
+docker build $SECRET $DOCKER_BUILD_ARGS --build-arg BASE_IMAGE="$BASE" --label source_fingerprint="$FINGERPRINT" \
+  -f docker/runner.Dockerfile -t integration-runner:dev .
+docker build $DOCKER_BUILD_ARGS --build-arg BASE_IMAGE="$BASE" -f docker/egress-proxy/Dockerfile -t integration-egress:dev .
+echo "Sandbox images ready: integration-runner:dev ($FINGERPRINT), integration-egress:dev"
