@@ -5,8 +5,11 @@
 A take-home assignment for a Senior PM role.
 
 - **Assignment:** `Using AI to generate the integration code(PM).docx`. **Local only: git-ignored, never committed.** Read only. Never edit, move or rename it.
-- **PRD:** `PRD.md` (v3). Part 1 = product thinking. **Appendix A = the build spec. Build from Appendix A.**
-- **Reviews:** `REVIEW_NOTES.md` (review of PRD v1) and `REVIEW_V2.md` (review of PRD v2). Almost all their fixes are in PRD v3.
+- **PRD:** `PRD.md` (v4). Product thinking: what and why.
+- **TRD:** `TRD.md`. The technical build spec (was PRD Appendix A). **Build from the TRD.**
+- **DESIGN:** `DESIGN.md`. Colours, type, components, writing rules, screen layouts. **The UI uses only its tokens.**
+- **EVAL:** `EVAL.md`. The AI quality eval (benchmark), acceptance scenarios SC-01 to SC-17, security tests, test plan.
+- **README:** `README.md`. The panel's front page: reading order and the one-line idea.
 - **GitHub:** https://github.com/Suj1234/api-connector
 
 **Goal:** a working prototype for a 5-minute demo (PRD §15). **One generic engine. No app-specific code outside `specs/`.**
@@ -29,13 +32,16 @@ A take-home assignment for a Senior PM role.
 **AI model:**
 - Google Gemini via `google-genai`, behind `LLMClient`.
 - Draft: `gemini-3.8-flash`. Final repair: `gemini-4-argon`.
-- The benchmark (PRD A8.3) makes the final choice.
+- The benchmark (`EVAL.md` §2) makes the final choice.
 
 ## How to work with Sujeet (important)
 
 - **Before creating or changing files, tell him the plan in simple words and wait for his OK.** For each milestone, list the files you will create or change, then start.
 - Keep explanations short and simple. No long theory.
 - If anything is unclear, ask. Don't assume.
+- **Never assume anything Sujeet didn't say** (for example how he'll use the prototype, who will see it, or how it will be shared). If in doubt, ask one short question first.
+- **Sharing:** Sujeet will share a **link** to the running prototype with other people. It must work as a hosted link, behind a login he controls.
+- Give one specific answer, not a list of options, unless he asks for options.
 
 ## Company name rule (important)
 
@@ -56,17 +62,17 @@ A take-home assignment for a Senior PM role.
 
 1. **Contracts**
    - Build:
-     - `schemas/connector_spec.schema.json` (PRD A3), plus a flattened `schemas/draft_spec.schema.json` for the LLM
-     - the canonical record model (A5)
-     - the SQLite tables (A10)
+     - `schemas/connector_spec.schema.json` (TRD §3), plus a flattened `schemas/draft_spec.schema.json` for the LLM
+     - the canonical record model (TRD §5)
+     - the SQLite tables (TRD §10)
      - spec rule checks: read-only, exact host, valid placeholders, variable patterns, no secrets in URLs
    - Done when:
-     - the 3 specs in A4 validate;
+     - the 3 specs in TRD §4 validate;
      - a spec with DELETE is rejected;
      - a spec that calls another host is rejected.
 2. **Engine**
    - Build:
-     - Jinja2 templates → generated module (A6)
+     - Jinja2 templates → generated module (TRD §6)
      - 6 paginators
      - `aggregate` and `active_rule`
      - retry/backoff with `Retry-After` and `X-RateLimit-Reset`
@@ -78,7 +84,7 @@ A take-home assignment for a Senior PM role.
      - `ruff` and `mypy --strict` pass on the generated code.
 3. **Sandbox + vault**
    - Build:
-     - Docker runner with a per-run egress proxy (A2)
+     - Docker runner with a per-run egress proxy (TRD §2)
      - subprocess fallback, labelled "demo isolation only"
      - AES-GCM vault with per-tenant keys (HKDF)
    - Done when:
@@ -97,19 +103,20 @@ A take-home assignment for a Senior PM role.
      - Gemini `LLMClient` with schema-constrained output
      - evidence check and conflict detection
      - hint scrubbing
-     - repair loop with JSON Patch (A8)
+     - repair loop with JSON Patch (TRD §8)
    - Done when:
      - AI-drafted Zendesk, Calendly and Notion specs pass the same tests as the hand-written ones;
      - the surprise app drafts and tests end to end;
-     - the benchmark (A8.3) produces its results table.
+     - the benchmark (`EVAL.md` §2) produces its results table.
 6. **UI**
    - Build:
-     - screens F1–F8 (PRD §7) with SSE progress
+     - screens F1–F8 (PRD §7, layouts in `DESIGN.md` §8) with SSE progress
+     - styling only from the `DESIGN.md` tokens (navy primary `#0A2540`, IBM Plex Sans); no raw hex in components
      - tenant switcher (`acme`, `globex`, `internal`)
      - library submit → approve → connect
-     - savings preview (A11) from `fixtures/acme/`
+     - savings preview (TRD §11) from `fixtures/acme/`
      - Generated code tab
-     - "Demo data" labels in replay mode
+     - "Sample data" labels in replay mode
    - Done when:
      - the full §15 demo can be clicked through.
 7. **Polish for demo**
@@ -118,7 +125,14 @@ A take-home assignment for a Senior PM role.
      - backup video
      - SHOULD items, if time allows
    - Done when:
-     - scenarios SC-01 to SC-17 (A12) pass.
+     - scenarios SC-01 to SC-17 (`EVAL.md` §3) pass.
+
+## Build status (29 Oct 2026)
+
+- Milestones 1, 2, 3, 5, 6 done; 7 done except the final video, which is recorded on Sujeet's Mac with Gemini on.
+- Hosted at https://integration-builder-five.vercel.app (Vercel, Postgres, login on). 29 Oct: the full flow passed there with real Gemini and real docs (Calendly, sample data): build → test → savings → go live → library → second tenant.
+- Milestone 4 (live vendor APIs) and the real benchmark wait on test accounts (vendor tokens).
+- Scenario status: `EVAL.md` §6. Run steps: `prototype/README.md`. Build decisions: `TRD.md` §15.
 
 ## Rules that must not be broken
 
@@ -128,9 +142,9 @@ A take-home assignment for a Senior PM role.
 - No app-specific code outside `specs/`.
 - Nothing reaches another tenant's library without internal review. Each tenant's own test always runs.
 - Never commit real customer or personal data. Replay recordings use fake people.
-- Don't build anything marked LATER in Appendix A1.
+- Don't build anything marked LATER in TRD §1.
 
-## Check at build time (full list: PRD A16)
+## Check at build time (full list: TRD §14)
 
 - **Calendly:**
   - the `max_start_time` parameter on `/scheduled_events`;

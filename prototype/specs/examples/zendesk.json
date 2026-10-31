@@ -1,0 +1,119 @@
+{
+  "spec_version": "1.1",
+  "origin": "hand_written",
+  "app": {
+    "name": "Zendesk",
+    "docs_url": "https://developer.zendesk.com/api-reference/",
+    "api_host_pattern": "{subdomain}.zendesk.com",
+    "tier": "T1",
+    "tier_reason": "Users endpoint returns last_login_at"
+  },
+  "variables": [
+    {
+      "name": "subdomain",
+      "label": "Zendesk subdomain",
+      "example": "acme",
+      "required": true,
+      "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+    }
+  ],
+  "base_url": "https://{subdomain}.zendesk.com/api/v2",
+  "auth": {
+    "type": "oauth_client_credentials",
+    "fields": [
+      {
+        "name": "client_id",
+        "label": "OAuth client unique identifier",
+        "secret": false
+      },
+      {
+        "name": "client_secret",
+        "label": "OAuth client secret",
+        "secret": true
+      }
+    ],
+    "token_url": "https://{subdomain}.zendesk.com/oauth/tokens",
+    "grant_type": "client_credentials",
+    "client_auth": "body",
+    "body_format": "json",
+    "scope": "read",
+    "extra_params": {},
+    "token_path": "access_token",
+    "scopes": [
+      "read"
+    ],
+    "role_required": "Admin creates a confidential OAuth client owned by a dedicated service account",
+    "setup_steps": [
+      "Admin Center > Apps and integrations > APIs > OAuth clients",
+      "Add a confidential client, created by a dedicated service account (Zendesk attributes API actions to the client's creator)",
+      "Copy the unique identifier and the secret"
+    ]
+  },
+  "default_headers": {
+    "Accept": "application/json"
+  },
+  "rate_limit": {
+    "requests_per_minute": 200,
+    "plan_note": "Team 200, Growth/Professional 400, Enterprise 700, High Volume add-on 2,500 per minute",
+    "headers": {},
+    "retry_after_header": "Retry-After"
+  },
+  "bootstrap": [],
+  "streams": {
+    "users": {
+      "method": "GET",
+      "path": "/users",
+      "query": {
+        "role[]": [
+          "agent",
+          "admin"
+        ],
+        "page[size]": "100"
+      },
+      "records_path": "users",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "page[after]",
+        "next_cursor_path": "meta.after_cursor",
+        "has_more_path": "meta.has_more"
+      },
+      "field_map": {
+        "external_id": "id",
+        "email": "email",
+        "name": "name",
+        "role": "role",
+        "status": {
+          "path": "suspended",
+          "map": {
+            "true": "suspended",
+            "false": "active"
+          },
+          "default": "unknown"
+        },
+        "is_admin": {
+          "path": "role",
+          "map": {
+            "admin": true
+          },
+          "default": false
+        },
+        "last_active_at": "last_login_at"
+      }
+    },
+    "usage": null
+  },
+  "usage_definition": {
+    "metric_label": "Last login",
+    "active_rule": {
+      "field": "last_active_at",
+      "op": "within_days",
+      "value": 30
+    },
+    "proxy": false,
+    "fallback": null
+  },
+  "warnings": [
+    "last_login_at also updates on API requests made with an API token; whether OAuth calls update it is not documented. Always exclude the connector's own service account from inactivity",
+    "Zendesk API tokens are being retired (no new tokens since 27 Oct 2026; all stop on 30 Apr 2027); use OAuth"
+  ]
+}

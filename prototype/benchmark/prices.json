@@ -1,0 +1,13 @@
+{
+  "checked_on": "2026-10-29",
+  "source": "https://ai.google.dev/gemini-api/docs/pricing (paid tier, list prices; re-check before quoting)",
+  "models": {
+    "gemini-3.5-flash-lite": {"input_per_m": 0.30, "output_per_m": 2.50},
+    "gemini-3.8-flash": {"input_per_m": 0.75, "output_per_m": 3.75},
+    "gemini-4-argon": {"input_per_m": 2.00, "output_per_m": 10.00}
+  },
+  "scheduled_changes": {
+    "gemini-3.8-flash": {"from": "2027-01-01", "input_per_m": 1.50, "output_per_m": 7.50},
+    "gemini-4-argon": {"from": "2026-12-01", "input_per_m": 4.00, "output_per_m": 20.00}
+  }
+}

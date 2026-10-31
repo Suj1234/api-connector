@@ -1,0 +1,430 @@
+{
+ "app": "zendesk",
+ "recorded_at": "2026-10-29T09:00:00.000000Z",
+ "variables": {
+  "subdomain": "acme-demo"
+ },
+ "interactions": [
+  {
+   "method": "POST",
+   "url": "https://acme-demo.zendesk.com/oauth/tokens",
+   "query": {},
+   "body": {
+    "access_token": "replay-access-token-not-secret",
+    "token_type": "bearer",
+    "scope": "read"
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://acme-demo.zendesk.com/api/v2/users",
+   "query": {
+    "role[]": [
+     "agent",
+     "admin"
+    ],
+    "page[size]": "*?"
+   },
+   "body": {
+    "users": [
+     {
+      "id": 900000000001,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000001.json",
+      "name": "Zendesk Sync (service account)",
+      "email": "zendesk-sync@acme.example",
+      "role": "admin",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-29T07:00:00Z"
+     },
+     {
+      "id": 900000000002,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000002.json",
+      "name": "Mei Petrov",
+      "email": "mei.petrov@acme.example",
+      "role": "admin",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-29T07:00:00Z"
+     },
+     {
+      "id": 900000000003,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000003.json",
+      "name": "Anika Holm",
+      "email": "anika.holm@acme.example",
+      "role": "admin",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-16T01:00:00Z"
+     },
+     {
+      "id": 900000000004,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000004.json",
+      "name": "Alma Gupta",
+      "email": "alma.gupta@acme.example",
+      "role": "admin",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-09-18T05:30:00Z"
+     },
+     {
+      "id": 900000000005,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000005.json",
+      "name": "Uma Yilmaz",
+      "email": "uma.yilmaz@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-15T02:30:00Z"
+     },
+     {
+      "id": 900000000006,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000006.json",
+      "name": "Femi Duarte",
+      "email": "femi.duarte@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": null
+     },
+     {
+      "id": 900000000007,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000007.json",
+      "name": "Beatriz Jensen",
+      "email": "beatriz.jensen@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-15T03:00:00Z"
+     },
+     {
+      "id": 900000000008,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000008.json",
+      "name": "Kai Garcia",
+      "email": "kai.garcia@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-12T06:00:00Z"
+     },
+     {
+      "id": 900000000009,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000009.json",
+      "name": "Nadia Larsen",
+      "email": "nadia.larsen@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-08-31T06:00:00Z"
+     },
+     {
+      "id": 900000000010,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000010.json",
+      "name": "Diego Yilmaz",
+      "email": "diego.yilmaz@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-07T07:30:00Z"
+     },
+     {
+      "id": 900000000011,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000011.json",
+      "name": "Emeka Chen",
+      "email": "emeka.chen@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": true,
+      "last_login_at": "2026-10-15T05:30:00Z"
+     },
+     {
+      "id": 900000000012,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000012.json",
+      "name": "Noor Sato",
+      "email": "noor.sato@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-27T07:00:00Z"
+     },
+     {
+      "id": 900000000013,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000013.json",
+      "name": "Bo Moreau",
+      "email": "bo.moreau@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-25T06:00:00Z"
+     },
+     {
+      "id": 900000000014,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000014.json",
+      "name": "Oona Petrov",
+      "email": "oona.petrov@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-09-24T06:30:00Z"
+     },
+     {
+      "id": 900000000015,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000015.json",
+      "name": "Eitan Sato",
+      "email": "eitan.sato@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-14T06:30:00Z"
+     },
+     {
+      "id": 900000000016,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000016.json",
+      "name": "Ines Eze",
+      "email": "ines.eze@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-02T03:30:00Z"
+     },
+     {
+      "id": 900000000017,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000017.json",
+      "name": "Aziz Bauer",
+      "email": "aziz.bauer@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-11T06:30:00Z"
+     },
+     {
+      "id": 900000000018,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000018.json",
+      "name": "Aziz Dahl",
+      "email": "aziz.dahl@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": null
+     },
+     {
+      "id": 900000000019,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000019.json",
+      "name": "Leila Haddad",
+      "email": "leila.haddad@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-09-17T08:00:00Z"
+     },
+     {
+      "id": 900000000020,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000020.json",
+      "name": "Carmen Kaur",
+      "email": "carmen.kaur@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-23T07:30:00Z"
+     }
+    ],
+    "meta": {
+     "has_more": true,
+     "after_cursor": "cursor-users-1",
+     "before_cursor": null
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "url": "https://acme-demo.zendesk.com/api/v2/users",
+   "query": {
+    "role[]": [
+     "agent",
+     "admin"
+    ],
+    "page[size]": "*?",
+    "page[after]": "cursor-users-1"
+   },
+   "body": {
+    "users": [
+     {
+      "id": 900000000021,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000021.json",
+      "name": "Hugo Yilmaz",
+      "email": "hugo.yilmaz@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-17T01:00:00Z"
+     },
+     {
+      "id": 900000000022,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000022.json",
+      "name": "Bo Zhou",
+      "email": "bo.zhou@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": true,
+      "last_login_at": "2026-10-14T05:00:00Z"
+     },
+     {
+      "id": 900000000023,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000023.json",
+      "name": "Hana Nakamura",
+      "email": "hana.nakamura@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-11T09:00:00Z"
+     },
+     {
+      "id": 900000000024,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000024.json",
+      "name": "Zeke Weber",
+      "email": "zeke.weber@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-08-28T01:30:00Z"
+     },
+     {
+      "id": 900000000025,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000025.json",
+      "name": "Leila Ekman",
+      "email": "leila.ekman@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-05T02:00:00Z"
+     },
+     {
+      "id": 900000000026,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000026.json",
+      "name": "Oona Okafor",
+      "email": "oona.okafor@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-10T08:30:00Z"
+     },
+     {
+      "id": 900000000027,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000027.json",
+      "name": "Carmen Fischer",
+      "email": "carmen.fischer@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-13T23:30:00Z"
+     },
+     {
+      "id": 900000000028,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000028.json",
+      "name": "Ada Kaur",
+      "email": "ada.kaur@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-13T07:30:00Z"
+     },
+     {
+      "id": 900000000029,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000029.json",
+      "name": "Aziz Moreau",
+      "email": "aziz.moreau@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-09-12T07:30:00Z"
+     },
+     {
+      "id": 900000000030,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000030.json",
+      "name": "Alba Abara",
+      "email": "alba.abara@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": null
+     },
+     {
+      "id": 900000000031,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000031.json",
+      "name": "Kenji Holm",
+      "email": "kenji.holm@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-10T08:00:00Z"
+     },
+     {
+      "id": 900000000032,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000032.json",
+      "name": "Teo Varga",
+      "email": "teo.varga@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-09-30T01:00:00Z"
+     },
+     {
+      "id": 900000000033,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000033.json",
+      "name": "Luca Nakamura",
+      "email": "luca.nakamura@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-24T05:00:00Z"
+     },
+     {
+      "id": 900000000034,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000034.json",
+      "name": "Aziz Fontaine",
+      "email": "aziz.fontaine@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-08-09T07:30:00Z"
+     },
+     {
+      "id": 900000000035,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000035.json",
+      "name": "Chidi Yilmaz",
+      "email": "chidi.yilmaz@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-25T07:00:00Z"
+     },
+     {
+      "id": 900000000036,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000036.json",
+      "name": "Jonas Holm",
+      "email": "jonas.holm@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-17T23:30:00Z"
+     },
+     {
+      "id": 900000000037,
+      "url": "https://acme-demo.zendesk.com/api/v2/users/900000000037.json",
+      "name": "Zara Garcia",
+      "email": "zara.garcia@acme.example",
+      "role": "agent",
+      "active": true,
+      "suspended": false,
+      "last_login_at": "2026-10-26T02:30:00Z"
+     }
+    ],
+    "meta": {
+     "has_more": false,
+     "after_cursor": null,
+     "before_cursor": null
+    }
+   }
+  }
+ ]
+}

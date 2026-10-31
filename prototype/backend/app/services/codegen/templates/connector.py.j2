@@ -1,0 +1,407 @@
+{#- Connector module template (TRD §6). Every value from the spec is rendered with |py (a Python
+    literal via repr), never pasted as code, so a spec can't inject code into the module. -#}
+"""{{ app_name|oneline }} connector, version {{ version }}.
+
+Generated from the connector spec by templates. Do not edit: change the spec and regenerate.
+
+{% for line in summary_lines %}{{ line }}
+{% endfor %}
+The six assignment items are marked in the code: 1. API client, 2. Auth setup, 3. Users and
+usage, 4. Error handling, 5. Pagination, 6. Logging.
+"""
+
+from __future__ import annotations
+
+import json
+import time
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
+
+import httpx
+
+from runtime import helpers as h
+from runtime.errors import ConnectorError
+from runtime.logs import RunLogger
+from runtime.transport import HostBlockedError
+
+APP = {{ app_name|py }}
+SLUG = {{ slug|py }}
+VERSION = {{ version }}
+HOST_PATTERN = {{ host_pattern|py }}
+BASE_URL = {{ base_url|py }}
+VARIABLE_PATTERNS: dict[str, str] = {{ variable_patterns|py }}
+AUTH_FIELDS: list[str] = {{ auth_fields|py }}
+DEFAULT_HEADERS: dict[str, str] = {{ default_headers|py }}
+META: dict[str, Any] = {{ meta|py }}
+
+REQUESTS_PER_MINUTE = {{ rpm }}
+RETRY_AFTER_HEADER: str | None = {{ retry_after_header|py }}
+RESET_SECONDS_HEADER: str | None = {{ reset_seconds_header|py }}
+MAX_RATE_LIMIT_TRIES = 5
+MAX_SERVER_ERROR_TRIES = 3
+MAX_WAIT_SECONDS = 60.0
+{% if auth.type == "oauth_client_credentials" %}
+TOKEN_URL = {{ auth.token_url|py }}
+GRANT_TYPE = {{ auth.grant_type|py }}
+TOKEN_SCOPE: str | None = {{ auth.scope|py }}
+TOKEN_EXTRA_PARAMS: dict[str, str] = {{ auth.extra_params|py }}
+TOKEN_PATH = {{ auth.get("token_path", "access_token")|py }}
+{% endif %}
+
+
+# 1. API client
+class Client:
+    def __init__(
+        self,
+        secrets: dict[str, str],
+        variables: dict[str, str],
+        transport: httpx.BaseTransport,
+        log: RunLogger,
+        limits: dict[str, int | None],
+        now: datetime,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        self.secrets = secrets
+        self.vars: dict[str, str] = dict(variables)
+        self.log = log
+        self.limits = limits
+        self.now = now
+        self.sleep = sleep
+        self.pages: dict[str, int] = {"users": 0, "usage": 0}
+        self.warnings: list[str] = []
+        self.last_shape: Any = None  # keys and types of the last response, for repair; never values
+        self._last_request = 0.0
+        timeout_s = limits.get("timeout_s")
+        self._deadline = time.monotonic() + timeout_s if timeout_s else None
+        self.http = httpx.Client(
+            base_url=h.fill(BASE_URL, self.vars, now),
+            transport=transport,
+            headers=DEFAULT_HEADERS,
+            timeout=30.0,
+            follow_redirects=False,
+        )
+
+    # 2. Auth setup: {{ auth.type }}{% if auth.scopes %} (scopes: {{ auth.scopes|join(", ")|oneline }}){% endif %}
+    def login(self) -> None:
+{%- if auth.type == "bearer_token" %}
+        self.http.headers["Authorization"] = "Bearer " + h.fill(
+            {{ auth.bearer_template|py }}, self.vars, self.now, self.secrets
+        )
+{%- elif auth.type == "basic" %}
+        self.http.auth = httpx.BasicAuth(
+            h.fill({{ auth.basic_username|py }}, self.vars, self.now, self.secrets),
+            h.fill({{ auth.basic_password|py }}, self.vars, self.now, self.secrets),
+        )
+{%- elif auth.type == "api_key_header" %}
+        self.http.headers[{{ auth.header_name|py }}] = h.fill(
+            {{ auth.value_template|py }}, self.vars, self.now, self.secrets
+        )
+{%- elif auth.type == "oauth_client_credentials" %}
+        self.http.headers["Authorization"] = "Bearer " + self._fetch_token()
+{%- endif %}
+{%- for step in bootstrap %}
+        # Bootstrap: {{ step.name }}
+        body = self.get_json("login", h.fill({{ step.path|py }}, self.vars, self.now, encode=True), {{ step.query|py }})
+{%- for var, expr in step.extract.items() %}
+        self._extract({{ var|py }}, {{ expr|py }}, body)
+{%- endfor %}
+{%- endfor %}
+
+    def _extract(self, name: str, expression: str, body: Any) -> None:
+        value = h.search(expression, body)
+        if not isinstance(value, str | int) or isinstance(value, bool) or value == "":
+            raise ConnectorError("MAPPING_FAILED", detail=f"login value {name!r} not found")
+        self.vars[name] = str(value)
+{% if auth.type == "oauth_client_credentials" %}
+    def _fetch_token(self) -> str:
+        """OAuth client credentials. A new token at the start of every run; no refresh tokens."""
+        data: dict[str, str] = {"grant_type": GRANT_TYPE}
+        if TOKEN_SCOPE is not None:
+            data["scope"] = TOKEN_SCOPE
+        for key, value in TOKEN_EXTRA_PARAMS.items():
+            data[key] = h.fill(value, self.vars, self.now, self.secrets)
+{%- if auth.client_auth == "basic" %}
+        auth: httpx.Auth | None = httpx.BasicAuth(self.secrets["client_id"], self.secrets["client_secret"])
+{%- else %}
+        auth: httpx.Auth | None = None
+        data["client_id"] = self.secrets["client_id"]
+        data["client_secret"] = self.secrets["client_secret"]
+{%- endif %}
+        url = h.fill(TOKEN_URL, self.vars, self.now)
+        self._pace()
+        start = time.monotonic()
+        try:
+{%- if auth.body_format == "json" %}
+            response = self.http.post(url, json=data, auth=auth if auth else httpx.USE_CLIENT_DEFAULT)
+{%- else %}
+            response = self.http.post(url, data=data, auth=auth if auth else httpx.USE_CLIENT_DEFAULT)
+{%- endif %}
+        except HostBlockedError:
+            self.log.request("login", "POST", httpx.URL(url).path, None, 0, None, 0)
+            raise ConnectorError("HOST_BLOCKED") from None
+        except httpx.ProxyError as error:
+            raise ConnectorError("HOST_BLOCKED" if "403" in str(error) else "UNREACHABLE") from None
+        except httpx.TimeoutException:
+            raise ConnectorError("TIMEOUT") from None
+        except httpx.ConnectError:
+            raise ConnectorError("UNREACHABLE", detail="could not connect") from None
+        except httpx.HTTPError:
+            raise ConnectorError("AUTH_REJECTED", detail="token request failed") from None
+        ms = int((time.monotonic() - start) * 1000)
+        # 6. Logging: the token request is logged by path and status only; never the body.
+        self.log.request("login", "POST", response.request.url.path, response.status_code, ms, None, 0)
+        if response.status_code != 200:
+            raise ConnectorError("AUTH_REJECTED", response.status_code, "token request was refused")
+        try:
+            token = h.search(TOKEN_PATH, response.json())
+        except json.JSONDecodeError:
+            token = None
+        if not isinstance(token, str) or not token:
+            raise ConnectorError("AUTH_REJECTED", detail="no access token in the response")
+        self.log.add_secret(token)
+        return token
+{% endif %}
+    # 4. Error handling: retry, backoff and plain error codes. 6. Logging: one line per request.
+    def request(
+        self, step: str, path_or_url: str, params: list[tuple[str, str]] | None = None
+    ) -> httpx.Response:
+        rate_limited = 0
+        server_errors = 0
+        attempt = 0
+        while True:
+            self._pace()
+            start = time.monotonic()
+            try:
+                query = httpx.QueryParams(tuple(params)) if params is not None else None
+                response = self.http.get(path_or_url, params=query)
+            except HostBlockedError:
+                self.log.request(step, "GET", httpx.URL(path_or_url).path, None, 0, None, attempt)
+                raise ConnectorError("HOST_BLOCKED") from None
+            except httpx.ProxyError as error:
+                # The sandbox's egress proxy refused the call: only the spec's host is allowed out.
+                blocked = "403" in str(error)
+                raise ConnectorError("HOST_BLOCKED" if blocked else "UNREACHABLE", detail="egress proxy") from None
+            except httpx.TimeoutException:
+                server_errors += 1
+                self.log.request(step, "GET", httpx.URL(path_or_url).path, None, 0, None, attempt)
+                if server_errors >= MAX_SERVER_ERROR_TRIES:
+                    raise ConnectorError("TIMEOUT") from None
+                attempt += 1
+                self._wait(h.backoff(server_errors))
+                continue
+            except httpx.ConnectError:
+                raise ConnectorError("UNREACHABLE", detail="could not connect") from None
+            except httpx.HTTPError:
+                raise ConnectorError("SERVER_ERROR", detail="connection failed") from None
+            ms = int((time.monotonic() - start) * 1000)
+            status = response.status_code
+            self.log.request(step, "GET", response.request.url.path, status, ms, None, attempt)
+            attempt += 1
+            if status == 429:
+                rate_limited += 1
+                if rate_limited >= MAX_RATE_LIMIT_TRIES:
+                    raise ConnectorError("RATE_LIMITED_OUT", 429)
+                self._wait(self._rate_limit_wait(response, rate_limited))
+                continue
+            if status >= 500:
+                server_errors += 1
+                if server_errors >= MAX_SERVER_ERROR_TRIES:
+                    raise ConnectorError("SERVER_ERROR", status)
+                self._wait(h.backoff(server_errors))
+                continue
+            if status == 401:
+                raise ConnectorError("AUTH_REJECTED", status)
+            if status == 402:
+                raise ConnectorError("PAID_ONLY", status)
+            if status == 403:
+                raise ConnectorError("PERMISSION_OR_SCOPE", status)
+            if status >= 300:
+                raise ConnectorError("WRONG_REQUEST", status)
+            return response
+
+    def get_json(
+        self, step: str, path_or_url: str, query: dict[str, str | list[str]] | None = None
+    ) -> Any:
+        params = h.fill_query(query, self.vars, self.now) if query else None
+        return self._json(self.request(step, path_or_url, params))
+
+    def _json(self, response: httpx.Response) -> Any:
+        try:
+            body = response.json()
+        except json.JSONDecodeError:
+            raise ConnectorError("WRONG_REQUEST", response.status_code, "response is not JSON") from None
+        self.last_shape = h.shape(body)
+        return body
+
+    def _rate_limit_wait(self, response: httpx.Response, tries: int) -> float:
+        for header in (RETRY_AFTER_HEADER, "Retry-After", RESET_SECONDS_HEADER):
+            if header and header in response.headers:
+                try:
+                    return float(response.headers[header])
+                except ValueError:
+                    continue
+        return h.backoff(tries)
+
+    def _pace(self) -> None:
+        """Stay below the documented rate limit; stop at the run's time limit."""
+        if self._deadline is not None and time.monotonic() > self._deadline:
+            raise ConnectorError("TIMEOUT")
+        gap = 60.0 / REQUESTS_PER_MINUTE - (time.monotonic() - self._last_request)
+        if gap > 0:
+            self.sleep(gap)
+        self._last_request = time.monotonic()
+
+    def _wait(self, seconds: float) -> None:
+        self.sleep(min(max(seconds, 0.0), MAX_WAIT_SECONDS))
+{% for s in streams %}
+    # 5. Pagination for {{ s.name }}: {{ s.pagination.type }}
+    def fetch_{{ s.name }}(self) -> list[Any]:
+        path = h.fill({{ s.path|py }}, self.vars, self.now, encode=True)
+        params = h.fill_query({{ s.query|py }}, self.vars, self.now)
+        cap = self.limits.get("{{ s.name }}_pages")
+        restarted = False
+        while True:
+            try:
+                return self._pages_{{ s.name }}(path, params, cap)
+            except ConnectorError as error:
+                # A cursor that stopped working mid-way (expired): start over once, then give up.
+                if error.code != "CURSOR_EXPIRED" or restarted:
+                    raise
+                restarted = True
+                self.pages["{{ s.name }}"] = 0
+
+    def _pages_{{ s.name }}(self, path: str, params: list[tuple[str, str]], cap: int | None) -> list[Any]:
+        rows: list[Any] = []
+        previous: str | None = None
+{%- if s.pagination.type == "cursor" %}
+        seen: set[str] = set()
+        cursor: str | None = None
+{%- elif s.pagination.type in ("next_url", "link_header") %}
+        seen: set[str] = set()
+        next_url: str | None = None
+{%- elif s.pagination.type == "offset_limit" %}
+        offset = 0
+{%- elif s.pagination.type == "page_number" %}
+        page = {{ s.pagination.start }}
+{%- endif %}
+        while True:
+            if cap is not None and self.pages["{{ s.name }}"] >= cap:
+                self.warnings.append("{{ s.name }}_capped")
+                return rows
+{%- if s.pagination.type == "cursor" %}
+            page_params = params + ([({{ s.pagination.request_param|py }}, cursor)] if cursor else [])
+            response = self._page("{{ s.name }}", path, page_params, cursor is not None)
+{%- elif s.pagination.type in ("next_url", "link_header") %}
+            response = (
+                self._page("{{ s.name }}", next_url, None, True)
+                if next_url
+                else self._page("{{ s.name }}", path, params, False)
+            )
+{%- elif s.pagination.type == "offset_limit" %}
+            page_params = params + [
+                ({{ s.pagination.offset_param|py }}, str(offset)),
+                ({{ s.pagination.limit_param|py }}, "{{ s.pagination.limit }}"),
+            ]
+            response = self._page("{{ s.name }}", path, page_params, offset > 0)
+{%- elif s.pagination.type == "page_number" %}
+            page_params = params + [({{ s.pagination.page_param|py }}, str(page))]
+            response = self._page("{{ s.name }}", path, page_params, page != {{ s.pagination.start }})
+{%- else %}
+            response = self._page("{{ s.name }}", path, params, False)
+{%- endif %}
+            body = self._json(response)
+            page_rows = h.records({{ s.records_path|py }}, body)
+            self.pages["{{ s.name }}"] += 1
+            # Paging guard: the same page twice means the paging parameter is being ignored.
+            fingerprint = json.dumps(page_rows, sort_keys=True, default=str)
+            if page_rows and fingerprint == previous:
+                raise ConnectorError("PAGINATION_LOOP")
+            previous = fingerprint
+            rows.extend(page_rows)
+{%- if s.pagination.type == "none" %}
+            return rows
+{%- elif s.pagination.type == "cursor" %}
+{%- if s.pagination.get("has_more_path") %}
+            if h.search({{ s.pagination.has_more_path|py }}, body) is not True:
+                return rows
+{%- endif %}
+            next_cursor = h.search({{ s.pagination.next_cursor_path|py }}, body)
+            if next_cursor is None or next_cursor == "":
+                return rows
+            cursor = str(next_cursor)
+            if cursor in seen:
+                raise ConnectorError("PAGINATION_LOOP")
+            seen.add(cursor)
+{%- elif s.pagination.type == "next_url" %}
+            found = h.search({{ s.pagination.next_url_path|py }}, body)
+            if not isinstance(found, str) or not found:
+                return rows
+            next_url = found
+            if next_url in seen:
+                raise ConnectorError("PAGINATION_LOOP")
+            seen.add(next_url)
+{%- elif s.pagination.type == "link_header" %}
+            found = response.links.get("next", {}).get("url")
+            if not found:
+                return rows
+            next_url = str(found)
+            if next_url in seen:
+                raise ConnectorError("PAGINATION_LOOP")
+            seen.add(next_url)
+{%- elif s.pagination.type == "offset_limit" %}
+            if len(page_rows) < {{ s.pagination.limit }}:
+                return rows
+            offset += {{ s.pagination.limit }}
+{%- elif s.pagination.type == "page_number" %}
+            if not page_rows:
+                return rows
+            page += 1
+{%- endif %}
+{% endfor %}
+    def _page(
+        self, step: str, path_or_url: str, params: list[tuple[str, str]] | None, follow_up: bool
+    ) -> httpx.Response:
+        try:
+            return self.request(step, path_or_url, params)
+        except ConnectorError as error:
+            # A follow-up page that suddenly fails as a bad request means the cursor stopped working.
+            if follow_up and error.code == "WRONG_REQUEST":
+                raise ConnectorError("CURSOR_EXPIRED", error.status) from None
+            raise
+
+
+# 3. Users: map each record to the platform's canonical user fields.
+def map_user(record: Any) -> dict[str, Any]:
+    return {
+{%- for f in field_map %}
+{%- if f.kind == "path" %}
+        {{ f.target|py }}: h.search({{ f.path|py }}, record),
+{%- elif f.kind == "lookup" %}
+        {{ f.target|py }}: h.lookup(h.search({{ f.path|py }}, record), {{ f.map|py }}, {{ f.default|py }}),
+{%- else %}
+        {{ f.target|py }}: {{ f.const|py }},
+{%- endif %}
+{%- endfor %}
+    }
+
+
+def get_users(client: Client) -> list[dict[str, Any]]:
+    return [map_user(record) for record in client.fetch_users()]
+
+
+# 3. Usage: {{ usage_comment|oneline }}
+def get_usage(client: Client, users: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+{%- if usage %}
+    return h.aggregate(
+        client.fetch_usage(),
+        explode_path={{ usage.aggregate.explode_path|py }},
+        user_key_path={{ usage.aggregate.user_key_path|py }},
+        time_path={{ usage.aggregate.time_path|py }},
+        window_days={{ usage.aggregate.window_days }},
+        metrics={{ usage.aggregate.metrics|py }},
+        now=client.now,
+    )
+{%- else %}
+    return {}
+{%- endif %}

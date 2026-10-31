@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "cd frontend && npm ci",
+  "buildCommand": "cd frontend && npm run build && cd .. && python3 -m pip install --quiet --target .tools --python-version 3.12 --implementation cp --platform manylinux2014_x86_64 --only-binary=:all: ruff==0.17.3 mypy==2.4.1",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 300,
+      "excludeFiles": "{frontend/**,tests/**,docker/**,data/**,.venv/**,scripts/**,fixtures/docs_example/**,fixtures/docs_conflict/**}"
+    }
+  }
+}

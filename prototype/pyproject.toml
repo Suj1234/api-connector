@@ -1,0 +1,58 @@
+[project]
+name = "integration-builder-prototype"
+version = "0.1.0"
+description = "AI-generated integration builder prototype (see ../TRD.md)"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.27",
+  "jinja2>=3.1",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "pydantic>=2.7",
+  "sqlalchemy>=2.0",
+  "jsonschema>=4.22",
+  "jmespath>=1.0",
+  "cryptography>=42",
+  "google-genai>=2.0",
+  "rapidfuzz>=3.0",
+  "trafilatura>=1.12",
+  "jsonpatch>=1.33",
+  "pyyaml>=6.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "python-multipart>=0.0.9",
+  "psycopg[binary]>=3.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "types-jsonschema", "types-PyYAML"]
+browser = ["playwright>=1.40"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "backend"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+"fixtures/**" = ["E501"]
+"benchmark/**" = ["E501"]
+"backend/app/api.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "runtime", "runner"]
+
+[tool.mypy]
+strict = true
+mypy_path = "backend"
+packages = ["app", "runtime", "runner"]
+
+[[tool.mypy.overrides]]
+module = ["jmespath", "jmespath.*", "trafilatura", "trafilatura.*", "jsonpatch", "playwright", "playwright.*"]
+ignore_missing_imports = true

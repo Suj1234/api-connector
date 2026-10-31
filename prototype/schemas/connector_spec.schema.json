@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Suj1234/api-connector/prototype/schemas/connector_spec.schema.json",
+  "title": "Connector spec",
+  "description": "TRD §3. One spec per app. The AI fills it; templates turn it into code. Read-only, host and placeholder rules are checked in code (spec_validator.py), not here, so they report RULES_REJECTED.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_version", "origin", "app", "variables", "base_url", "auth", "default_headers", "rate_limit", "bootstrap", "streams", "usage_definition", "warnings"],
+  "properties": {
+    "spec_version": {"const": "1.1"},
+    "origin": {"enum": ["ai", "hand_written"]},
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "docs_url", "api_host_pattern", "tier", "tier_reason"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "docs_url": {"type": "string", "pattern": "^https?://"},
+        "api_host_pattern": {"type": "string", "minLength": 1},
+        "tier": {"enum": ["T1", "T2", "T3"]},
+        "tier_reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "variables": {"type": "array", "items": {"$ref": "#/$defs/variable"}},
+    "base_url": {"type": "string", "minLength": 1},
+    "auth": {"$ref": "#/$defs/auth"},
+    "default_headers": {"type": "object", "additionalProperties": {"type": "string"}},
+    "rate_limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests_per_minute"],
+      "properties": {
+        "requests_per_minute": {"type": "integer", "minimum": 1},
+        "plan_note": {"type": ["string", "null"]},
+        "headers": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {"type": "string"},
+            "remaining": {"type": "string"},
+            "reset_seconds": {"type": "string"}
+          }
+        },
+        "retry_after_header": {"type": ["string", "null"]}
+      }
+    },
+    "bootstrap": {"type": "array", "items": {"$ref": "#/$defs/bootstrap_step"}},
+    "streams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["users", "usage"],
+      "properties": {
+        "users": {"$ref": "#/$defs/users_stream"},
+        "usage": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/usage_stream"}]}
+      }
+    },
+    "usage_definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric_label", "active_rule", "proxy", "fallback"],
+      "properties": {
+        "metric_label": {"type": ["string", "null"]},
+        "active_rule": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/active_rule"}]},
+        "proxy": {"type": "boolean"},
+        "fallback": {"enum": ["sso_last_login", null]}
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "evidence": {
+      "type": "object",
+      "propertyNames": {"pattern": "^(/[^/]+)+$"},
+      "additionalProperties": {"$ref": "#/$defs/evidence_item"}
+    },
+    "conflicts": {"type": "array", "items": {"$ref": "#/$defs/conflict"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"origin": {"const": "ai"}}},
+      "then": {"required": ["evidence"], "properties": {"evidence": {"minProperties": 1}}}
+    },
+    {
+      "if": {"properties": {"app": {"properties": {"tier": {"const": "T2"}}}}},
+      "then": {"properties": {"streams": {"properties": {"usage": {"type": "object"}}}}},
+      "else": {"properties": {"streams": {"properties": {"usage": {"type": "null"}}}}}
+    }
+  ],
+  "$defs": {
+    "jmespath": {"type": "string", "minLength": 1, "description": "A JMESPath expression; compiled by the validator"},
+    "query": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {"type": "string"},
+          {"type": "array", "items": {"type": "string"}, "minItems": 1}
+        ]
+      }
+    },
+    "variable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "label", "example", "required", "pattern"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "label": {"type": "string", "minLength": 1},
+        "example": {"type": "string"},
+        "required": {"type": "boolean"},
+        "pattern": {"type": "string", "minLength": 2}
+      }
+    },
+    "auth_field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "label", "secret"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "label": {"type": "string", "minLength": 1},
+        "secret": {"type": "boolean"}
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["type", "fields", "scopes", "role_required", "setup_steps"],
+      "properties": {
+        "type": {"enum": ["bearer_token", "basic", "api_key_header", "oauth_client_credentials"]},
+        "fields": {"type": "array", "items": {"$ref": "#/$defs/auth_field"}, "minItems": 1},
+        "scopes": {"type": "array", "items": {"type": "string"}},
+        "role_required": {"type": ["string", "null"]},
+        "setup_steps": {"type": "array", "items": {"type": "string"}}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "type": {"const": "bearer_token"},
+            "fields": true, "scopes": true, "role_required": true, "setup_steps": true,
+            "bearer_template": {"type": "string", "minLength": 1}
+          },
+          "required": ["bearer_template"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "basic"},
+            "fields": true, "scopes": true, "role_required": true, "setup_steps": true,
+            "basic_username": {"type": "string", "minLength": 1},
+            "basic_password": {"type": "string", "minLength": 1}
+          },
+          "required": ["basic_username", "basic_password"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "api_key_header"},
+            "fields": true, "scopes": true, "role_required": true, "setup_steps": true,
+            "header_name": {"type": "string", "minLength": 1},
+            "value_template": {"type": "string", "minLength": 1}
+          },
+          "required": ["header_name", "value_template"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "oauth_client_credentials"},
+            "fields": true, "scopes": true, "role_required": true, "setup_steps": true,
+            "token_url": {"type": "string", "minLength": 1},
+            "grant_type": {"enum": ["client_credentials", "account_credentials"]},
+            "client_auth": {"enum": ["basic", "body"]},
+            "body_format": {"enum": ["form", "json"]},
+            "scope": {"type": ["string", "null"]},
+            "extra_params": {"type": "object", "additionalProperties": {"type": "string"}},
+            "token_path": {"$ref": "#/$defs/jmespath", "default": "access_token"}
+          },
+          "required": ["token_url", "grant_type", "client_auth", "body_format", "scope", "extra_params"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "bootstrap_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "method", "path", "query", "extract"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z_][a-z0-9_]*$"},
+        "method": {"type": "string"},
+        "path": {"type": "string", "minLength": 1},
+        "query": {"$ref": "#/$defs/query"},
+        "extract": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"pattern": "^[a-z_][a-z0-9_]*$"},
+          "additionalProperties": {"$ref": "#/$defs/jmespath"}
+        }
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "properties": {"type": {"const": "none"}},
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "cursor"},
+            "request_param": {"type": "string", "minLength": 1},
+            "next_cursor_path": {"$ref": "#/$defs/jmespath"},
+            "has_more_path": {"$ref": "#/$defs/jmespath"}
+          },
+          "required": ["request_param", "next_cursor_path"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "next_url"},
+            "next_url_path": {"$ref": "#/$defs/jmespath"}
+          },
+          "required": ["next_url_path"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {"type": {"const": "link_header"}},
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "offset_limit"},
+            "offset_param": {"type": "string", "minLength": 1},
+            "limit_param": {"type": "string", "minLength": 1},
+            "limit": {"type": "integer", "minimum": 1}
+          },
+          "required": ["offset_param", "limit_param", "limit"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": {"const": "page_number"},
+            "page_param": {"type": "string", "minLength": 1},
+            "start": {"type": "integer", "minimum": 0}
+          },
+          "required": ["page_param", "start"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "field_map_value": {
+      "oneOf": [
+        {"$ref": "#/$defs/jmespath"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "map"],
+          "properties": {
+            "path": {"$ref": "#/$defs/jmespath"},
+            "map": {"type": "object", "additionalProperties": {"type": ["string", "boolean", "number", "null"]}},
+            "default": {"type": ["string", "boolean", "number", "null"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["const"],
+          "properties": {"const": {"type": ["string", "boolean", "number", "null"]}}
+        }
+      ]
+    },
+    "users_stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path", "query", "records_path", "pagination", "field_map"],
+      "properties": {
+        "method": {"type": "string"},
+        "path": {"type": "string", "minLength": 1},
+        "query": {"$ref": "#/$defs/query"},
+        "records_path": {"$ref": "#/$defs/jmespath"},
+        "pagination": {"$ref": "#/$defs/pagination"},
+        "field_map": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["external_id"],
+          "description": "Targets are canonical fields (TRD §5). usage_* fields come from the usage stream's aggregate, not from here.",
+          "properties": {
+            "external_id": {"$ref": "#/$defs/field_map_value"},
+            "email": {"$ref": "#/$defs/field_map_value"},
+            "name": {"$ref": "#/$defs/field_map_value"},
+            "role": {"$ref": "#/$defs/field_map_value"},
+            "status": {"$ref": "#/$defs/field_map_value"},
+            "is_admin": {"$ref": "#/$defs/field_map_value"},
+            "license_type": {"$ref": "#/$defs/field_map_value"},
+            "is_billable": {"$ref": "#/$defs/field_map_value"},
+            "last_active_at": {"$ref": "#/$defs/field_map_value"}
+          }
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "op"],
+      "properties": {
+        "target": {"enum": ["usage_metric_value", "last_active_at"]},
+        "op": {"enum": ["count", "max_time", "sum"]},
+        "value_path": {"$ref": "#/$defs/jmespath"},
+        "label": {"type": "string"}
+      },
+      "if": {"properties": {"op": {"const": "sum"}}},
+      "then": {"required": ["value_path"]}
+    },
+    "usage_stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path", "query", "records_path", "pagination", "aggregate"],
+      "properties": {
+        "method": {"type": "string"},
+        "path": {"type": "string", "minLength": 1},
+        "query": {"$ref": "#/$defs/query"},
+        "records_path": {"$ref": "#/$defs/jmespath"},
+        "pagination": {"$ref": "#/$defs/pagination"},
+        "aggregate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["explode_path", "user_key_path", "join_on", "time_path", "window_days", "metrics"],
+          "properties": {
+            "explode_path": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/jmespath"}]},
+            "user_key_path": {"$ref": "#/$defs/jmespath"},
+            "join_on": {"enum": ["external_id", "email"]},
+            "time_path": {"type": "string", "minLength": 1, "description": "JMESPath; the prefix $parent. reads from the record before it was exploded"},
+            "window_days": {"type": "integer", "minimum": 1, "maximum": 366},
+            "metrics": {"type": "array", "items": {"$ref": "#/$defs/metric"}, "minItems": 1}
+          }
+        }
+      }
+    },
+    "active_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "op", "value"],
+      "properties": {
+        "field": {"enum": ["usage_metric_value", "last_active_at", "is_billable", "is_admin"]},
+        "op": {"enum": ["gte", "within_days", "is_true"]},
+        "value": {"type": ["number", "null"]}
+      },
+      "oneOf": [
+        {"properties": {"op": {"enum": ["gte", "within_days"]}, "value": {"type": "number"}}},
+        {"properties": {"op": {"const": "is_true"}, "value": {"type": "null"}}}
+      ]
+    },
+    "evidence_item": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["url", "quote"],
+          "properties": {
+            "url": {"type": "string", "pattern": "^https?://"},
+            "quote": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source", "pointer"],
+          "properties": {
+            "source": {"const": "openapi"},
+            "pointer": {"type": "string", "pattern": "^(/[^/]*)*$"}
+          }
+        }
+      ]
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "values", "chosen", "reason"],
+      "properties": {
+        "field": {"type": "string", "pattern": "^(/[^/]+)+$"},
+        "values": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["value", "source"],
+            "properties": {
+              "value": {},
+              "source": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "chosen": {},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
