@@ -29,7 +29,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import DOCS_CACHE, PROTOTYPE, get, on_vercel, writable_data_dir
-from app.db import Database
+from app.db import INVENTORY, Database
 from app.models.tables import (
     AppUser,
     AuditEvent,
@@ -42,21 +42,24 @@ from app.models.tables import (
     LibrarySpec,
     LlmCall,
     Run,
+    RunRequest,
     Tenant,
+    TokenRequest,
 )
 from app.services import ai_source, evidence_check, savings
 from app.services.codegen import render, slug_for
 from app.services.docs_fetcher import DocsBundle, Fetcher
 from app.services.hints import scrub_hint
 from app.services.pipeline import Pipeline, PipelineError, Settings
-from app.services.sandbox import DEMO_ISOLATION_LABEL, docker_available
+from app.services.sandbox import DEMO_ISOLATION_LABEL, SANDBOX
 from app.services.ssrf_guard import SSRFBlockedError, check_url
 from app.services.vault import Sealed, Vault
 from runtime import helpers as h
 
 REPLAY = PROTOTYPE / "fixtures" / "replay"
 EXAMPLES = PROTOTYPE / "specs" / "examples"
-SAMPLE_APPS = ("Zendesk", "Notion", "Slack")  # connected on sample data in a fresh database (PRD §15)
+SAMPLE_APPS = ("Zendesk", "Notion", "Slack")  # connected on sample data in a fresh database (PRD §0)
+SAMPLE_SOURCE = "Hand-written spec"  # how a sample app's connector is labelled; Delete leaves it alone
 TENANTS = ("acme", "globex", "internal")
 LIBRARY_MIN_SHOWN = 5
 PLAIN = {
@@ -102,10 +105,7 @@ class State:
                 threading.Thread(target=_prebuild_samples, args=(self,), daemon=True).start()
 
     def settings(self) -> Settings:
-        settings = Settings()
-        if settings.sandbox == "docker" and not docker_available():
-            settings.sandbox = "subprocess"
-        return settings
+        return Settings()
 
 
 def _vault_key() -> str:
@@ -315,8 +315,8 @@ def status(st: State_) -> dict[str, Any]:
     return {
         "ai_provider": provider,
         "ai_model": settings.draft_model if provider == "gemini" else None,
-        "sandbox": settings.sandbox,
-        "isolation_note": DEMO_ISOLATION_LABEL if settings.sandbox == "subprocess" else None,
+        "sandbox": SANDBOX,
+        "isolation_note": DEMO_ISOLATION_LABEL,
     }
 
 
@@ -326,12 +326,8 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
     with st.db.session() as s:
         rows = []
         for item in s.scalars(select(InventoryApp).where(InventoryApp.tenant_id == tenant)):
-            connector = s.scalar(
-                select(Connector)
-                .where(Connector.tenant_id == tenant, Connector.app == item.app)
-                .order_by(Connector.id.desc())
-                .limit(1)
-            )
+            connectors = _connectors_of(s, tenant, item.app)
+            connector = connectors[0] if connectors else None
             library = _library_for(s, item.app)
             usage_status = "No usage data"
             if connector is not None and connector.status.startswith("live"):
@@ -354,6 +350,7 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                     else None,
                     "in_library": library is not None,
                     "library_spec_id": library.id if library else None,
+                    "removable": _removable(connectors, tenant, item.app),
                 }
             )
         # Apps the admin added themselves (not in the spend data): newest connector per app.
@@ -372,6 +369,7 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                     "usage_status": "Connected" if status == "live" else "Users only" if status == "live_users_only" else "No usage data",
                     "connector": {"id": connector.id, "status": status, "sample": connector.run_mode == "replay"},
                     "in_library": False, "library_spec_id": None,
+                    "removable": _removable(_connectors_of(s, tenant, connector.app), tenant, connector.app),
                 }
             )  # fmt: skip
         return rows
@@ -1035,7 +1033,7 @@ def _run_test(st: State, connector_id: int, args: dict[str, Any]) -> None:
                 s.add(
                     AuditEvent(
                         tenant_id=tenant, actor="sandbox", action="security.host_blocked",
-                        target=c.app, detail={"run_id": run_id, "blocked": result.blocked_calls},
+                        target=c.app, detail={"run_id": run_id},
                     )
                 )  # fmt: skip
         s.commit()
@@ -1050,7 +1048,7 @@ def _prebuild_samples(st: State) -> None:
         with st.db.session() as s:
             c = Connector(
                 tenant_id="acme", app=app_name, status="testing", tier=spec["app"]["tier"], run_mode="replay",
-                docs_url=spec["app"]["docs_url"], variables={}, ai_source="Hand-written spec",
+                docs_url=spec["app"]["docs_url"], variables={}, ai_source=SAMPLE_SOURCE,
             )  # fmt: skip
             s.add(c)
             s.flush()
@@ -1331,8 +1329,8 @@ def data_card(connector_id: int, tenant: Tenant_, st: State_) -> str:
             f"- **Login:** {summary['login']['type']}; scopes: {', '.join(summary['login']['scopes']) or 'none'}; role: {summary['login']['role_required'] or '—'}",
             "- **Fields stored:** id, email, name, role, status, admin flag, licence, last active, usage value",
             "- **Not stored:** raw API responses, tokens in clear text (AES-GCM vault, per-customer key)",
-            "- **Retention:** user records deleted 30 days after the connector is removed",
-            "- **Egress:** one host per run through a per-run egress proxy; static egress IPs on request",
+            "- **Retention:** user records are deleted with the connector (Delete app)",
+            "- **Egress:** one host per run; the sandbox refuses any other host",
             f"- **Plan / role needs:** {'; '.join(spec.get('warnings', [])) or '—'}",
             "",
             "**Evidence links:**",
@@ -1353,12 +1351,73 @@ def pause(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
 @app.delete("/api/connectors/{connector_id}")
 def remove(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
     with st.db.session() as s:
-        c = _connector(s, tenant, connector_id)
-        for table in (AppUser, Credential, ConnectorVersion):
-            s.execute(delete(table).where(table.connector_id == connector_id))
-        s.delete(c)
+        _connector(s, tenant, connector_id)
+        _drop_connector(s, st, connector_id)
         s.commit()
     return {"deleted": True}
+
+
+@app.delete("/api/inventory/{app_name}")
+def delete_app(app_name: str, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    """Delete app: an app the admin added goes with everything built for it, so it can be added again. A starting
+    app keeps its row and loses its connector ("Remove connector"); the sample apps can't be removed."""
+    with st.db.session() as s:
+        row = s.scalar(select(InventoryApp).where(InventoryApp.tenant_id == tenant, InventoryApp.app == app_name))
+        connectors = _connectors_of(s, tenant, app_name)
+        if row is None and not connectors:
+            raise HTTPException(404, f"There's no app called {app_name} in your inventory.")
+        what = _removable(connectors, tenant, app_name)
+        if what is None:
+            raise HTTPException(
+                409,
+                f"{app_name} is a sample app, so it stays for everyone who opens this link."
+                if connectors
+                else f"{app_name} has no connector to remove.",
+            )
+        if any(_busy(c) for c in connectors):
+            raise HTTPException(409, f"{app_name} is still building or testing. Wait for it to finish, then try again.")
+        for c in connectors:
+            _drop_connector(s, st, c.id)
+        if what == "app" and row is not None:
+            s.delete(row)
+        s.commit()
+    return {"deleted": what}
+
+
+def _connectors_of(s: Session, tenant: str, app_name: str) -> list[Connector]:
+    query = select(Connector).where(Connector.tenant_id == tenant, Connector.app == app_name)
+    return list(s.scalars(query.order_by(Connector.id.desc())))
+
+
+def _removable(connectors: list[Connector], tenant: str, app_name: str) -> str | None:
+    """What Delete removes: "app" for an app the admin added, "connector" for a starting app someone built a
+    connector for, None for the sample apps (one visitor must not break the demo for the next)."""
+    if any(c.ai_source == SAMPLE_SOURCE for c in connectors):
+        return None
+    if app_name.lower() not in {name.lower() for name, *_ in INVENTORY.get(tenant, [])}:
+        return "app"
+    return "connector" if connectors else None
+
+
+def _busy(c: Connector) -> bool:
+    """A build or test is running now. One past its time limit (its server instance died) doesn't count."""
+    started = c.job_started_at
+    if started is not None and started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    return (
+        c.job_state == "running"
+        and started is not None
+        and (datetime.now(UTC) - started).total_seconds() <= JOB_TIMEOUT_S + 30
+    )
+
+
+def _drop_connector(s: Session, st: State, connector_id: int) -> None:
+    """A connector and everything built for it: versions, runs, users, its token, progress and AI call records."""
+    s.execute(delete(RunRequest).where(RunRequest.run_id.in_(select(Run.id).where(Run.connector_id == connector_id))))
+    for table in (AppUser, Credential, TokenRequest, ConnectorVersion, Run, JobEvent, LlmCall):
+        s.execute(delete(table).where(table.connector_id == connector_id))
+    s.execute(delete(Connector).where(Connector.id == connector_id))
+    st.bundles.pop(connector_id, None)
 
 
 # --- static frontend (built) -------------------------------------------------------------------

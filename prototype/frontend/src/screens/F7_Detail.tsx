@@ -1,6 +1,6 @@
 // F7 Connector detail: status, last test run, what it reads, versions, the generated code and its data card.
 // Built from the reference parts: Breadcrumb, PageHeader, Banner, Tabs, Card + DetailsList, Table, CodeBlock.
-// Submit to library is built but hidden for now (PRD §15).
+// Submit to library is built but hidden for now (PRD §13).
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type ConnectorDetail } from "../api";
@@ -91,7 +91,7 @@ export default function Detail() {
                     ["Finished", fmtDate(run.finished_at)],
                     ["Users", run.summary?.users ?? null],
                     ["Data", run.run_mode === "replay" ? "Sample data (recorded answers, fake people)" : `${c.app}'s live API`],
-                    ["Sandbox", run.sandbox === "docker" ? "Docker: no network except the app's host" : "Demo isolation (subprocess)"],
+                    ["Sandbox", "Demo isolation (subprocess)"],
                     ["Problem", run.message],
                   ]}
                 />

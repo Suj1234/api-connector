@@ -1,4 +1,4 @@
-"""The §15 demo flow through the real API (recorded AI, replay data, subprocess sandbox)."""
+"""The main flow through the real API (recorded AI, replay data, subprocess sandbox)."""
 
 from __future__ import annotations
 
@@ -35,7 +35,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     else:
         monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}")
     monkeypatch.setenv("DEMO_PASSWORD", "")  # no demo login, even when .env turns it on
-    monkeypatch.setenv("SANDBOX_MODE", "subprocess")
     monkeypatch.setenv("SAMPLE_APPS", "0")  # no background builds: each test starts from the bare inventory
     monkeypatch.setenv("LLM_PROVIDER", "recorded")
     monkeypatch.setattr(ai_source, "RECORDINGS", tmp_path / "ai_recordings")  # hand-written specs, not local drafts
@@ -113,6 +112,30 @@ def test_full_demo_flow(client: TestClient) -> None:
     assert client.get(f"/api/connectors/{gid}", headers=GLOBEX).json()["last_run"]["exit_code"] == 0
     # Acme's connector and users are invisible to Globex
     assert client.get(f"/api/connectors/{cid}", headers=GLOBEX).status_code == 404
+
+
+def test_delete_app_then_add_it_again(client: TestClient) -> None:
+    details = {
+        "app_name": "Calendly", "docs_url": "https://developer.calendly.com/api-docs", "owner": "Sales Ops",
+        "annual_cost": "12000", "seats": "50", "renewal_date": str(date.today() + timedelta(days=60)),
+    }  # fmt: skip
+    cid = client.post("/api/connectors", headers=ACME, data=details).json()["id"]
+    wait(client, cid, ACME)
+    client.post(f"/api/connectors/{cid}/test", headers=ACME, json={})
+    wait(client, cid, ACME)
+    rows = {r["app"]: r for r in client.get("/api/inventory", headers=ACME).json()}
+    assert rows["Calendly"]["removable"] == "app" and rows["Zoom"]["removable"] is None
+    assert client.delete("/api/inventory/Calendly", headers=ACME).json() == {"deleted": "app"}
+    assert "Calendly" not in {r["app"] for r in client.get("/api/inventory", headers=ACME).json()}
+    assert client.get(f"/api/connectors/{cid}", headers=ACME).status_code == 404
+    assert client.post("/api/connectors", headers=ACME, data=details).status_code == 200  # free to add again
+
+    # A starting app keeps its row and loses only its connector
+    zid = client.post("/api/connectors", headers=ACME, data={"app_name": "Zoom", "docs_url": "http://10.0.0.1/"}).json()
+    wait(client, zid["id"], ACME)
+    assert client.delete("/api/inventory/Zoom", headers=ACME).json() == {"deleted": "connector"}
+    assert {r["app"]: r for r in client.get("/api/inventory", headers=ACME).json()}["Zoom"]["connector"] is None
+    assert client.delete("/api/inventory/Zoom", headers=ACME).status_code == 409  # nothing left to remove
 
 
 def test_ssrf_link_fails_with_a_plain_message(client: TestClient) -> None:

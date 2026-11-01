@@ -30,7 +30,7 @@ export const pagingLabel = (type: string) => PAGING[type] ?? type;
 
 // --- brand ----------------------------------------------------------------------------------
 
-// The logo (DESIGN.md §6): a blurple mark with a white link, then "Integration" stacked over a spaced-out "BUILDER".
+// The logo (DESIGN.md §6): a purple mark with a white link, then "Integration" stacked over a spaced-out "BUILDER".
 export function Logo({ onArt }: { onArt?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5" aria-label="Integration builder">
@@ -119,7 +119,7 @@ export function Button({ children, variant = "secondary", small, block, disabled
   );
 }
 
-// Reference Spinner: a 16px (24px large) blurple ring with a brand-coloured top, one turn every 2 s.
+// Reference Spinner: a 16px (24px large) purple ring with a brand-coloured top, one turn every 2 s.
 export function Spinner({ light, large }: { light?: boolean; large?: boolean }) {
   return (
     <span
@@ -278,7 +278,7 @@ export function DetailsList({ items, layout = "stacked" }: { items: [string, Rea
   );
 }
 
-// Reference Breadcrumb: blurple links, each followed by a small chevron.
+// Reference Breadcrumb: purple links, each followed by a small chevron.
 export function Breadcrumb({ items }: { items: { label: string; onClick: () => void }[] }) {
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-[13px] leading-4">
@@ -530,7 +530,7 @@ export function MetricCard({ label, value, compare, link, note }: { label: strin
   );
 }
 
-// Reference Tabs: 20px apart over a strong rule; the current tab is blurple with a 2px underline.
+// Reference Tabs: 20px apart over a strong rule; the current tab is purple with a 2px underline.
 export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: string; count?: number }[]; value: string; onChange: (id: string) => void }) {
   return (
     <div className="mb-4 flex gap-5 overflow-x-auto border-b border-border-strong" role="tablist">
@@ -556,7 +556,7 @@ export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: str
 
 // --- progress ---------------------------------------------------------------------------------
 
-// Reference Stepper: the vertical step list of setup flows. 16px nodes: green when done, blurple when current;
+// Reference Stepper: the vertical step list of setup flows. 16px nodes: green when done, purple when current;
 // the current step can list its substeps.
 export type Step = { label: string; status: "done" | "active" | "pending"; substeps?: { label: string; current?: boolean }[] };
 export function Stepper({ steps }: { steps: Step[] }) {

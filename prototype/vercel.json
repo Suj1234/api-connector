@@ -11,7 +11,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
-      "excludeFiles": "{frontend/**,tests/**,docker/**,data/**,.venv/**,scripts/**,fixtures/docs_example/**,fixtures/docs_conflict/**}"
+      "excludeFiles": "{frontend/**,tests/**,data/**,.venv/**,fixtures/docs_example/**,fixtures/docs_conflict/**}"
     }
   }
 }

@@ -202,7 +202,7 @@ export default function ConnectTest() {
 
             <Card
               title="Test in the sandbox"
-              aside={<Badge tone="neutral" icon={false}>{(run?.sandbox ?? "") === "docker" ? "Docker sandbox" : "Demo isolation (subprocess)"}</Badge>}
+              aside={<Badge tone="neutral" icon={false}>Demo isolation (subprocess)</Badge>}
             >
               <p className="mb-4 text-text-subdued">
                 The code runs where it can only reach <code className="code">{s.host}</code>. If a step fails in a way the AI can fix, it proposes a small change to the form (up to 3 tries) and the test runs again.

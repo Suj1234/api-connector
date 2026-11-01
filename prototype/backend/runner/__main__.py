@@ -159,7 +159,7 @@ def _make_client(
 
 
 def _network_transport() -> httpx.BaseTransport:
-    """The real network. Inside the Docker sandbox HTTPS_PROXY is the per-run egress proxy."""
+    """The real network, through HTTPS_PROXY when the machine needs one."""
     proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or None
     ca_file = os.environ.get("SSL_CERT_FILE")
     verify: ssl.SSLContext | bool = ssl.create_default_context(cafile=ca_file) if ca_file else True

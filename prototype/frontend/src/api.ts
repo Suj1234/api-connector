@@ -2,7 +2,7 @@
 
 export type TenantId = "acme" | "globex" | "internal";
 
-// One customer on screen for now; the tenant switcher comes back later (PRD §15).
+// One customer on screen for now; the tenant switcher comes back later (PRD §13).
 let currentTenant: TenantId = "acme";
 
 export function setTenant(t: TenantId): void {
@@ -129,6 +129,7 @@ export type InventoryRow = {
   connector: { id: number; status: string; sample: boolean } | null; // sample: recorded answers, fake people
   in_library: boolean;
   library_spec_id: number | null;
+  removable: "app" | "connector" | null; // what Delete removes; null for the sample apps
 };
 
 export type AppUser = {
@@ -248,7 +249,7 @@ export type Savings = {
   usage_label: string;
   usage_source: string;
   missing: string[];
-  people: { name: string | null; email: string | null; bucket: string; reason: string; usage_metric_value: number | null; last_active_at: string | null }[];
+  people: { external_id: string; name: string | null; email: string | null; bucket: string; reason: string; usage_metric_value: number | null; last_active_at: string | null }[];
   contract_source: string;
   run_mode: string;
   token_owner_warning: string | null;

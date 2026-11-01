@@ -189,7 +189,7 @@ class Run(Base):
     version: Mapped[int] = mapped_column(Integer)
     mode: Mapped[str] = mapped_column(String(10))
     run_mode: Mapped[str] = mapped_column(String(10))
-    sandbox: Mapped[str] = mapped_column(String(20))  # docker | subprocess
+    sandbox: Mapped[str] = mapped_column(String(20))  # subprocess (older rows may say docker)
     status: Mapped[str] = mapped_column(String(10), default="running")
     exit_code: Mapped[int | None] = mapped_column(Integer)
     error_code: Mapped[str | None] = mapped_column(String(40))

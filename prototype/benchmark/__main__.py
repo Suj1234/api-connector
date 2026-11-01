@@ -103,7 +103,6 @@ def score(app: str, model: str, run: int) -> Row:
     settings = Settings(
         draft_model=model if not oracle else "oracle", escalate_model="gemini-4-argon" if not oracle else "oracle"
     )
-    settings.sandbox = "docker" if _docker() else "subprocess"
     pipe = Pipeline(llm, Fetcher(), lambda event: None, settings)
     start = time.monotonic()
     row = Row(app, model, run, False, 0.0, False, False, False, 0, 0.0, 0.0)
@@ -137,12 +136,6 @@ def _usage_match(spec: dict[str, Any], golden: dict[str, Any]) -> bool:
         and (a.get("active_rule") or {}).get("field") == (b.get("active_rule") or {}).get("field")
         and (a.get("active_rule") or {}).get("op") == (b.get("active_rule") or {}).get("op")
     )
-
-
-def _docker() -> bool:
-    from app.services.sandbox import docker_available
-
-    return docker_available()
 
 
 def summarise(rows: list[Row]) -> str:

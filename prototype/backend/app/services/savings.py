@@ -87,10 +87,8 @@ def bucket_for(
             return "not_in_hr", "Not in HR data (contractor or shared mailbox); not counted as recoverable"
     if user.get("usage_available"):
         verdict = h.active_rule_passes(user, rule, today)
-        if verdict is True:
-            return "active", "Active per the app"
-        if verdict is False:
-            return "inactive", "Inactive per the app"
+        if verdict is not None and rule is not None:
+            return ("active" if verdict else "inactive"), _rule_reason(user, rule, verdict)
     if fallback == "sso_last_login" and files.sso:
         sso = files.sso.get(email)
         last = h.parse_time(sso.get("last_login_at")) if sso else None
@@ -98,6 +96,20 @@ def bucket_for(
             return "inactive", "No SSO login in 30 days (per SSO login)"
         return "active", "Logged in through SSO in the last 30 days (per SSO login)"
     return "usage_unknown", "No usage data and no fallback"
+
+
+def _rule_reason(user: dict[str, Any], rule: dict[str, Any], passed: bool) -> str:
+    """Why the app's own usage data puts this person where they are, in plain words."""
+    if rule["op"] == "gte":
+        value = user.get(rule["field"])
+        shown = f"{value:g}" if isinstance(value, int | float) else value  # 4, not 4.0
+        return f"{user.get('usage_metric_label') or 'Usage'}: {shown} (per the app)"
+    if rule["op"] == "within_days":
+        days = rule["value"]
+        if passed:
+            return f"Active in the last {days} days (per the app)"
+        return f"No activity in {days} days (per the app)"
+    return "Active per the app" if passed else "Inactive per the app"
 
 
 def compute(
@@ -117,6 +129,7 @@ def compute(
         counts[bucket] += 1
         people.append(
             {
+                "external_id": user.get("external_id"),
                 "name": user.get("name"),
                 "email": user.get("email"),
                 "bucket": bucket,

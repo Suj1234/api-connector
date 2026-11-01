@@ -13,7 +13,7 @@ import ConnectorRouter from "./screens/ConnectorRouter";
 import Login from "./screens/Login";
 
 // The reference AppShell: Sidebar, TopBar, page. One customer on screen; the tenant switcher,
-// Library and review queue are built but hidden for now (PRD §15).
+// Library and review queue are built but hidden for now (PRD §13).
 type Session = { required: boolean; logged_in: boolean };
 
 export default function App() {
@@ -80,7 +80,7 @@ function Shell({ status, onLogOut }: { status: Status | null; onLogOut?: () => v
 const modelName = (s: Status) =>
   s.ai_provider === "gemini" && s.ai_model ? s.ai_model.split("-").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ") : "Recorded answers";
 
-// Reference Sidebar: 244px, 30px items with icons, blurple current page, footer item at the bottom.
+// Reference Sidebar: 244px, 30px items with icons, purple current page, footer item at the bottom.
 function Sidebar({ status }: { status: Status | null }) {
   const { pathname } = useLocation();
   const connecting = pathname.startsWith("/connect/") || pathname === "/connect" || pathname.startsWith("/apps/"); // still the inventory

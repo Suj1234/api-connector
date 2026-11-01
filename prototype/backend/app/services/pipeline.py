@@ -97,7 +97,6 @@ class Settings:
     escalate_model: str = field(default_factory=lambda: get("LLM_MODEL_ESCALATE", "gemini-4-argon"))
     token_budget: int = field(default_factory=lambda: int(get("LLM_INPUT_TOKEN_BUDGET", "60000")))
     max_pages: int = field(default_factory=lambda: int(get("DOCS_MAX_PAGES", "60")))
-    sandbox: str = field(default_factory=lambda: get("SANDBOX_MODE", "docker"))
 
 
 class Pipeline:
@@ -246,7 +245,7 @@ class Pipeline:
             self._event("test", "start", "Testing in the sandbox")
             variables = {**payload.get("variables", {})}
             host = _host(spec, variables, payload)
-            result = run_connector(code, payload, host, mode="test", sandbox=self.settings.sandbox)
+            result = run_connector(code, payload, host, mode="test")
             summary = result.result
             if result.exit_code == 0:
                 self._event("test", "ok", f"{len(result.records)} users", status_detail=summary.get("status"))

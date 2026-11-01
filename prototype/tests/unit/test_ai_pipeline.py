@@ -100,7 +100,7 @@ def recording(tmp_path: Path) -> Path:
 
 def pipeline(llm: ScriptedLLM, events: list[dict[str, Any]], transport: httpx.BaseTransport | None = None) -> Pipeline:
     fetcher = Fetcher(transport or docs_site(PAGES), resolver=public, render_js=False)
-    settings = Settings(draft_model="draft-model", escalate_model="escalate-model", sandbox="subprocess")
+    settings = Settings(draft_model="draft-model", escalate_model="escalate-model")
     return Pipeline(llm, fetcher, events.append, settings)
 
 
@@ -201,7 +201,7 @@ def test_redirect_to_an_internal_address_is_not_followed() -> None:
 
 def test_name_resolving_to_a_private_address_is_blocked() -> None:
     fetcher = Fetcher(docs_site(PAGES), resolver=lambda host: ["10.1.2.3"], render_js=False)
-    p = Pipeline(ScriptedLLM([]), fetcher, lambda e: None, Settings(sandbox="subprocess"))
+    p = Pipeline(ScriptedLLM([]), fetcher, lambda e: None, Settings())
     with pytest.raises(PipelineError) as err:
         p.draft("X", f"{ROOT}/reference")
     assert err.value.code == "SSRF_BLOCKED"

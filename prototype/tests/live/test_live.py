@@ -1,7 +1,7 @@
 """Milestone 4 done-criteria: live runs against real accounts; user counts match each admin screen.
 
 Skipped unless the account's env vars are set (prototype/.env or the environment). Runs in the
-sandbox: Docker when the images exist, else the subprocess fallback.
+sandbox: the subprocess sandbox, as on the hosted link.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import pytest
 
 from app.config import get
 from app.services.codegen import render
-from app.services.sandbox import docker_available, run_connector
+from app.services.sandbox import run_connector
 from app.tools.record import LIVE_ENV, live_payload
 from runtime import helpers as h
 from tests.conftest import example_spec
@@ -31,9 +31,8 @@ def test_live_user_count_matches_admin_screen(app: str) -> None:
     spec = example_spec(app)
     payload = live_payload(app)
     host = h.fill(spec["app"]["api_host_pattern"], payload["variables"], h.utc_now())
-    sandbox = "docker" if docker_available() else "subprocess"
-    result = run_connector(render(spec, 1), payload, host, mode="test", sandbox=sandbox)
-    assert result.exit_code == 0, (result.result, result.blocked_calls)
+    result = run_connector(render(spec, 1), payload, host, mode="test")
+    assert result.exit_code == 0, result.result
     expected = get(f"{app.upper()}_EXPECTED_USERS")
     if expected:
         assert len(result.records) == int(expected), "user count differs from the admin screen"

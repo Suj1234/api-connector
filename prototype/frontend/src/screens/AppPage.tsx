@@ -5,11 +5,21 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, type AppUser, type AppUsers, type ConnectorDetail, type InventoryRow, type Savings } from "../api";
 import {
-  Badge, Breadcrumb, Button, Card, DetailsList, EmptyState, FilterChip, MetricCard, PageHeader, Pagination, SearchInput, StatusBadge, Table, Tabs, Tag,
-  fmtDate, fmtMoney, type Tone,
+  Badge, Banner, Breadcrumb, Button, Card, DetailsList, EmptyState, FilterChip, MetricCard, Modal, PageHeader, Pagination, SearchInput, StatusBadge, Table, Tabs, Tag,
+  fmtDate, fmtMoney, toast, type Tone,
 } from "../components/ui";
 
 const PAGE_SIZE = 25;
+// Each person's result from the savings check (HR data + usage): the same buckets as the savings step.
+const RESULT: Record<string, { label: string; tone: Tone }> = {
+  left: { label: "Left the company", tone: "danger" },
+  inactive: { label: "Inactive", tone: "warning" },
+  active: { label: "Active", tone: "success" },
+  not_in_hr: { label: "Not in HR data", tone: "info" },
+  excluded: { label: "Connector's own account", tone: "neutral" },
+  usage_unknown: { label: "Usage unknown", tone: "neutral" },
+};
+// The account status the app's own API reports (Calendly reports none: then the column is hidden).
 const STATUS: Record<AppUser["status"], { label: string; tone: Tone }> = {
   active: { label: "Active", tone: "success" },
   suspended: { label: "Suspended", tone: "warning" },
@@ -30,6 +40,9 @@ export default function AppPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(0);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.get<InventoryRow[]>("/api/inventory").then((rows) => {
@@ -68,9 +81,29 @@ export default function AppPage() {
   const usageLabel = users.find((u) => u.usage_metric_value !== null && u.usage_metric_label)?.usage_metric_label ?? null;
   // Who holds a seat: the same rule as the savings preview (deactivated people and free guests don't).
   const holders = users.filter((u) => u.is_billable ?? ["unknown", "active", "invited"].includes(u.status)).length;
+  // Status is each person's savings result; without one (no savings yet), the app's own account status.
+  const verdict = new Map((savings?.people ?? []).map((p) => [p.external_id, p]));
+  const statusOf = (u: AppUser) => {
+    const p = verdict.get(u.external_id);
+    return p ? RESULT[p.bucket] ?? RESULT.usage_unknown : STATUS[u.status];
+  };
+  const accountShown = verdict.size > 0 && users.some((u) => u.status !== "unknown");
 
   const ql = q.trim().toLowerCase();
-  const shown = users.filter((u) => (!status || STATUS[u.status].label === status) && (!ql || `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(ql)));
+  const shown = users.filter((u) => (!status || statusOf(u).label === status) && (!ql || `${u.name ?? ""} ${u.email ?? ""}`.toLowerCase().includes(ql)));
+  const removeLabel = row.removable === "app" ? "Delete app" : "Remove connector";
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.del(`/api/inventory/${encodeURIComponent(app)}`);
+      toast(row.removable === "app" ? `${app} was deleted` : `${app}'s connector was removed`);
+      navigate("/");
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
   const last = Math.max(0, Math.ceil(shown.length / PAGE_SIZE) - 1);
   const p = Math.min(page, last);
 
@@ -99,7 +132,14 @@ export default function AppPage() {
             {data?.sample && <Tag>Sample data</Tag>}
           </span>
         }
-        actions={!live && <Button variant="primary" onClick={setup}>{setupLabel}</Button>}
+        actions={
+          (row.removable || !live) && (
+            <>
+              {row.removable && <Button onClick={() => setConfirmOpen(true)}>{removeLabel}</Button>}
+              {!live && <Button variant="primary" onClick={setup}>{setupLabel}</Button>}
+            </>
+          )
+        }
       >
         {[row.owner, row.renewal_date && `Renews ${fmtDate(row.renewal_date)}`].filter(Boolean).join(" · ")}
       </PageHeader>
@@ -154,7 +194,7 @@ export default function AppPage() {
                   <FilterChip
                     label="Status"
                     value={status}
-                    options={[...new Set(users.map((u) => STATUS[u.status].label))]}
+                    options={[...new Set(users.map((u) => statusOf(u).label))]}
                     onChange={(v) => {
                       setStatus(v);
                       setPage(0);
@@ -183,7 +223,9 @@ export default function AppPage() {
                           ]
                         : [{ key: "email", header: "Email", render: (u: AppUser) => u.email && <span className="font-semibold text-text">{u.email}</span> }]),
                       ...(users.some((u) => u.role) ? [{ key: "role", header: "Role", render: (u: AppUser) => u.role }] : []),
-                      { key: "status", header: "Status", render: (u) => <Badge tone={STATUS[u.status].tone}>{STATUS[u.status].label}</Badge> },
+                      { key: "status", header: "Status", render: (u) => <Badge tone={statusOf(u).tone}>{statusOf(u).label}</Badge> },
+                      ...(verdict.size ? [{ key: "why", header: "Why", render: (u: AppUser) => <span className="text-text-subdued">{verdict.get(u.external_id)?.reason}</span> }] : []),
+                      ...(accountShown ? [{ key: "account", header: `Account in ${app}`, render: (u: AppUser) => <Badge tone={STATUS[u.status].tone}>{STATUS[u.status].label}</Badge> }] : []),
                       ...(hasActivity ? [{ key: "last", header: "Last active", render: (u: AppUser) => (u.last_active_at ? fmtDate(u.last_active_at) : null) }] : []),
                       ...(usageLabel
                         ? [{ key: "usage", header: usageLabel[0].toUpperCase() + usageLabel.slice(1), align: "right" as const, render: (u: AppUser) => (u.usage_available ? u.usage_metric_value : null) }]
@@ -237,6 +279,27 @@ export default function AppPage() {
           )}
         </div>
       </div>
+
+      <Modal
+        open={confirmOpen}
+        title={row.removable === "app" ? `Delete ${app}?` : `Remove ${app}'s connector?`}
+        onClose={() => setConfirmOpen(false)}
+        footer={
+          <>
+            <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button variant="danger" busy={busy} onClick={remove}>{removeLabel}</Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          <p className="text-text-subdued">
+            {row.removable === "app"
+              ? `This removes ${app} from your inventory, with its connector, test runs, users and saved token. You can add it again with Add an app.`
+              : `${app} stays in your inventory. Its connector, test runs, users and saved token are removed, and its row goes back to Connect usage data.`}
+          </p>
+          {error && <Banner tone="danger">{error}</Banner>}
+        </div>
+      </Modal>
     </>
   );
 }
