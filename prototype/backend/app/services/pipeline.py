@@ -93,7 +93,7 @@ class TestOutcome:
 
 @dataclass
 class Settings:
-    draft_model: str = field(default_factory=lambda: get("LLM_MODEL_DRAFT", "gemini-3.8-flash"))
+    draft_model: str = field(default_factory=lambda: get("LLM_MODEL_DRAFT", "gemini-4-argon"))
     escalate_model: str = field(default_factory=lambda: get("LLM_MODEL_ESCALATE", "gemini-4-argon"))
     token_budget: int = field(default_factory=lambda: int(get("LLM_INPUT_TOKEN_BUDGET", "60000")))
     max_pages: int = field(default_factory=lambda: int(get("DOCS_MAX_PAGES", "60")))
