@@ -237,4 +237,18 @@ One fixed list, run the same way every time: through the screens, with live Gemi
 - The AI's choices vary between runs. Miro's users came from its organization-members endpoint once and from SCIM once. The test with a real token decides which works.
 - Zendesk built from its docs passes (OAuth, 37 users), but the AI missed the last-login field and used SSO data for usage. The sample Zendesk uses the hand-written spec, which reads it.
 - No real vendor token was used. Every Calendly test ran on sample data; live calls were made only with a made-up token, which was rejected as expected.
-- pytest wasn't run.
+- Miro's members endpoint was drafted once without the email field (the docs page the AI read cut off the response format). Without email, the savings check can't match people to the HR file.
+
+**pytest (1 Nov):** 202 passed, 9 skipped (the live tests need vendor tokens). Fixed on the way: the flow tests read the local `.env` demo login and today's saved AI drafts; a recorded stand-in (no AI key) tripped the "too few proved" stop and lost its unproved fields; a docs conflict is now settled before the value check, saving one AI call.
+
+### Hosted run (1 Nov 2026, Vercel, fresh Neon database, live Gemini)
+
+The same checklist on https://integration-builder-five.vercel.app after the deploy:
+
+- **Passed:** A2 to A8 (Calendly built in about 50 s, 18 of 18 proved, 48 users, $4,560 a year, "in 75 days"), B2, B3 (Run test off until the fields are filled), C2 to C8, C10. No server errors in Vercel's logs.
+- **Found and fixed** (re-tested on the hosted link after a second deploy and a fresh database):
+  - The sample apps never finished building on a fresh database: Vercel pauses a function between requests, so the background thread stalled at "testing". On Vercel they are now built inside the first visit: 8 s, all three live.
+  - The AI cited OpenAPI endpoints one field too deep (`/paths/~1users~1me/get/path`), so 3 of 16 answers showed as unproved. Such a citation now proves the endpoint it sits in; a unit test covers it. The re-test drew correct citations: 16 of 16 proved, 48 users.
+  - The hosted copy read 30 docs pages (the screen says up to 60), so Typeform stopped with the vaguer "doesn't look like an API reference". Now 60: "Typeform's API doesn't list your company's users…" in 28 s.
+- **Not covered there:** the made-up token in B3 and the walkthrough script (D4) need typing into the hosted site; C9 (hint scrubbing) isn't visible from the screens. All three passed locally.
+- The re-tests ran in the hidden second tenant (Globex), so the demo company starts clean: 8 apps, no Calendly.
