@@ -79,6 +79,18 @@ def _pointer_node(document: Any, pointer: str) -> Any:
     return node
 
 
+def _endpoint_of(document: Any, pointer: str) -> tuple[str, Any]:
+    """A path cited one field too deep ("/paths/~1users/get/path": the path is the key, not a field) still points
+    into its endpoint; the path's parts must then show in it as usual."""
+    parts = pointer.strip("/").split("/")
+    while len(parts) > 2 and parts[0] == "paths":
+        parts.pop()
+        node = _pointer_node(document, "/" + "/".join(parts))
+        if node is not _MISSING:
+            return "/" + "/".join(parts), node
+    return pointer, _MISSING
+
+
 def _evidence_for(evidence: dict[str, Any], pointer: str) -> dict[str, Any] | None:
     """Evidence for /streams/users/pagination also proves its sub-fields, and the other way round."""
     if pointer in evidence:
@@ -102,12 +114,15 @@ def check(spec: dict[str, Any], bundle: DocsBundle) -> EvidenceReport:
             continue
         terms = _value_terms(spec, pointer)
         if item.get("source") == "openapi":
-            node = _pointer_node(bundle.openapi, item.get("pointer", ""))
+            cited = item.get("pointer", "")
+            node = _pointer_node(bundle.openapi, cited)
+            if node is _MISSING and pointer.endswith("/path"):
+                cited, node = _endpoint_of(bundle.openapi, cited)
             if node is _MISSING:
                 report.failed[pointer] = "OpenAPI pointer not found"
             elif pointer == RATE_LIMIT and not _has_rate(json.dumps(node), spec["rate_limit"]["requests_per_minute"]):
                 report.failed[pointer] = "the OpenAPI file doesn't give this number of requests there"
-            elif missing := _missing(terms, normalise(item.get("pointer", "").replace("~1", "/") + json.dumps(node))):
+            elif missing := _missing(terms, normalise(cited.replace("~1", "/") + json.dumps(node))):
                 report.failed[pointer] = f"the OpenAPI file doesn't show {missing} there"
             else:
                 report.verified.append(pointer)

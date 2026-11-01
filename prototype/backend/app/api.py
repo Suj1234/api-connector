@@ -94,7 +94,12 @@ class State:
         self.vault = Vault(_vault_key())
         self.bundles: dict[int, DocsBundle] = {}
         if fresh and get("SAMPLE_APPS", "1") == "1":
-            threading.Thread(target=_prebuild_samples, args=(self,), daemon=True).start()
+            if on_vercel():
+                # Vercel pauses a function between requests, so a background thread stalls. The first visit after
+                # a fresh database waits about a minute instead, once.
+                _prebuild_samples(self)
+            else:
+                threading.Thread(target=_prebuild_samples, args=(self,), daemon=True).start()
 
     def settings(self) -> Settings:
         settings = Settings()

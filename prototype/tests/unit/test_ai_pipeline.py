@@ -213,7 +213,9 @@ def test_unreadable_docs() -> None:
     assert err.value.code == "DOCS_UNREADABLE"
 
 
-def test_openapi_is_found_and_pointer_evidence_counts() -> None:
+# A pointer one field too deep (the AI's usual slip) still proves the endpoint it sits in.
+@pytest.mark.parametrize("cited", ["/paths/~1users/get", "/paths/~1users/get/path"])
+def test_openapi_is_found_and_pointer_evidence_counts(cited: str) -> None:
     openapi = {
         "openapi": "3.0.0",
         "servers": [{"url": "https://api.example.com/v1"}],
@@ -221,7 +223,7 @@ def test_openapi_is_found_and_pointer_evidence_counts() -> None:
     }
     extra = {"/openapi.json": httpx.Response(200, json=openapi)}
     spec = good_spec()
-    spec["evidence"]["/streams/users/path"] = {"source": "openapi", "pointer": "/paths/~1users/get"}
+    spec["evidence"]["/streams/users/path"] = {"source": "openapi", "pointer": cited}
     llm = ScriptedLLM([spec_to_draft(spec)])
     outcome = pipeline(llm, [], docs_site(PAGES, extra)).draft("Example App", f"{ROOT}/reference")
     assert outcome.bundle.openapi_url == f"{ROOT}/openapi.json"
