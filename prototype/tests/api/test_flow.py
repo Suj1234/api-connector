@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterator
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.api as api
+from app.services import ai_source
 
 ACME = {"X-Tenant": "acme"}
 GLOBEX = {"X-Tenant": "globex"}
@@ -32,8 +34,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         Base.metadata.drop_all(create_engine(database_url()))
     else:
         monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'app.db'}")
+    monkeypatch.setenv("DEMO_PASSWORD", "")  # no demo login, even when .env turns it on
     monkeypatch.setenv("SANDBOX_MODE", "subprocess")
+    monkeypatch.setenv("SAMPLE_APPS", "0")  # no background builds: each test starts from the bare inventory
     monkeypatch.setenv("LLM_PROVIDER", "recorded")
+    monkeypatch.setattr(ai_source, "RECORDINGS", tmp_path / "ai_recordings")  # hand-written specs, not local drafts
     monkeypatch.setenv("VAULT_KEY", "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=")
     monkeypatch.setattr(api, "_state", None)
     with TestClient(api.app) as c:
@@ -48,18 +53,22 @@ def wait(client: TestClient, connector_id: int, headers: dict[str, str]) -> list
 
 
 def test_full_demo_flow(client: TestClient) -> None:
-    # F1: inventory
+    # F1: inventory. Calendly isn't listed: the demo adds it with Add an app.
     inventory = {row["app"]: row for row in client.get("/api/inventory", headers=ACME).json()}
-    assert inventory["Calendly"]["usage_status"] == "No usage data" and inventory["Calendly"]["days_to_renewal"] == 58
-    assert not inventory["Calendly"]["in_library"]
+    assert "Calendly" not in inventory and inventory["Zoom"]["usage_status"] == "No usage data"
 
-    # F3: build with AI (recorded mode: the hand-written spec stands in, and says so)
+    # F3: Add an app, build with AI (recorded mode: the hand-written spec stands in, and says so)
     created = client.post(
         "/api/connectors",
         headers=ACME,
-        data={"app_name": "Calendly", "docs_url": "https://developer.calendly.com/api-docs"},
-    )
+        data={
+            "app_name": "Calendly", "docs_url": "https://developer.calendly.com/api-docs", "owner": "Marketing Ops",
+            "annual_cost": "14400", "seats": "60", "renewal_date": str(date.today() + timedelta(days=58)),
+        },
+    )  # fmt: skip
     cid = created.json()["id"]
+    row = {r["app"]: r for r in client.get("/api/inventory", headers=ACME).json()}["Calendly"]
+    assert row["days_to_renewal"] == 58 and not row["in_library"]
     events = wait(client, cid, ACME)
     assert any(e["stage"] == "ai" and "Hand-written" in e["message"] for e in events)
     detail = client.get(f"/api/connectors/{cid}", headers=ACME).json()

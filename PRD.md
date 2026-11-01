@@ -34,7 +34,7 @@ Every answer carries a quote from the docs as proof. Fixed templates then turn t
 
 | Deliverable | Our answer | Where |
 |---|---|---|
-| **1. Figma** | We answer with a **clickable prototype** instead of static Figma frames, so the panel can click through the real flow. 8 screens (F1–F8). The flow starts **inside the app inventory and the renewal flow** and ends on a **savings screen**, not on a code screen. | §7 |
+| **1. Figma** | We answer with a **clickable prototype** instead of static Figma frames, so the panel can click through the real flow. The screens are in §7, built from a dashboard design reference (`DESIGN.md`). The flow starts **inside the app inventory and the renewal flow**, shows **the users and usage the generated code retrieved** on each app's page, and ends on a **savings screen**, not on a code screen. | §7 |
 | **2. Safeguards / sandbox then prod** | **Yes, Test → checked → Live.** But the sandbox is **the platform's own isolated runner**. It reads the customer's real data with read-only calls, because most vendors don't give customers a test account. The two real risks are: (1) **wrong usage data that leads to cutting seats people use**, and (2) **the connector token itself** (see the Drift breach, §8). And we stop asking customers to be developers: nobody writes or edits code, ever. | §8 |
 | **3. Prototype + AI model** | **One generic engine**, proven on three different app shapes and one "surprise" app pasted live (§5.4). **Model:** Google Gemini. `gemini-3.8-flash` drafts and repairs; `gemini-4-argon` handles the final repair attempt. Both sit behind a swappable interface, and **the choice is made by a measured benchmark**, not opinion. | §9, `TRD.md`, `EVAL.md` |
 
@@ -245,10 +245,11 @@ App list ─► Is App X in the library?
 ```
 
 1. **Start (F1).** In the app list, App X shows its spend, its renewal date and "No usage data". The admin clicks **Connect usage data**.
+   - **An app that isn't in the list yet** is added with **Add an app**. The admin gives its owner, annual spend, seats and renewal date, so it joins the inventory like every other app. **Save app** adds it without building; **Build with AI** goes on to step 3.
 2. **Library check (F2).**
    - **If App X is in the library:** jump to step 7. The admin only pastes their own token.
    - **If not:** go to step 3.
-3. **Paste docs (F3).** The admin pastes App X's API docs link, or uploads its OpenAPI file.
+3. **Docs (F2).** The admin gives App X's API docs link **or** its OpenAPI file: one of the two, never both. The link must be a full web address; whether it opens is checked when the build reads it. From a docs link the AI also finds the app's OpenAPI file if the docs point to one.
 4. **AI fills the spec (F3, live progress).** It answers the five questions in §5.1 and attaches a docs quote to every answer.
 5. **Automatic checks (no AI).**
    - Every quote really exists in the docs.
@@ -263,6 +264,7 @@ App list ─► Is App X in the library?
    - **Wrong URL, field or paging:** the AI fixes the spec and retries, up to 3 times.
    - **Permission, scope or plan problem:** the admin gets a plain message, for example "This token needs the Admin role and scope X". There is no auto-fix.
    - **Users work but usage is blocked:** the admin can go live with users only, clearly labelled.
+   - **Passed:** every user the code retrieved shows on App X's page (F9), with account status, last active date and usage.
 10. **Cross-check and savings preview (F6).** The users are compared with HRIS (who left), SSO (who is assigned) and the contract (seats bought). The screen shows: N users, X left the company, Y inactive, Z seats never assigned, and $ recoverable before the renewal. Every number shows its source.
 11. **Go live.** The admin confirms, and the connector syncs daily.
 12. **Library (F8).** Once the connector is live and healthy, the admin can **submit it to the library**. Customer-specific values are stripped, and a platform engineer reviews it before any other customer can see it.
@@ -359,14 +361,15 @@ def get_users(c: Client) -> Iterator[dict]:
 
 | Screen | What it shows | Key elements |
 |---|---|---|
-| **F1 App inventory** | The app list: app, owner, annual spend, seats, renewal date, usage status (Connected / No usage data / In library) | Badge "Renews in 58 days"; button **Connect usage data** |
-| **F2 Library check** | **In library:** "App X is in the platform library · checked by the platform team · used by 5+ customers · healthy" → token form. **Not in library:** "Build it with AI from the app's API docs" | Library connect still runs this customer's own test |
-| **F3 Paste docs + progress** | A docs URL field or an OpenAPI upload. Live progress: Reading docs → Drafting → Checking evidence → Checking rules | Plain error if the docs can't be read: "Upload the OpenAPI file" |
-| **F4 What we found** | Plain summary cards: **Login** (type, role, exact scopes), **Users** (where they come from), **Usage** (tier badge, definition, "proxy" label), **Limits**, **Warnings**. An evidence drawer with quotes and conflict chips | Buttons: **Looks right** / **This looks wrong** (add a hint) |
-| **F5 Connect + test** | Token instructions and a scope checklist. Trust note: "Encrypted. Read-only. Never shared with the AI." A link to **Ask the app owner**. Then a live test checklist (Login ✓ Users ✓ Usage ✓ Mapping ✓) and a **Generated code** tab with the six items highlighted | Plain errors with the fix, e.g. "This token needs the Owner or Admin role and the scheduled_events:read scope" |
-| **F6 Savings preview** | 48 users · 6 left the company (HRIS) · 11 hosted no meetings in 90 days (proxy) · 60 seats bought, 12 never assigned · **$6,960 a year recoverable before the renewal on 26 Dec**. Every number shows its source | Confirm → Go live. A mismatch with SSO over 2% needs a note |
+| **F1 App inventory** | Cards: annual spend, spend with and without usage data, next renewal. The app list: app, owner, annual spend, seats, renewal date, usage status (Connected / Users only / No usage data). Filter tiles (All / No usage data / Connected / Renewing in 90 days), an Owner filter, search, 10 per page | Badge "Renews in 58 days"; **+ Add an app**; a row opens the app page (F9); **Connect usage data** opens F2 |
+| **F2 Add an app / Connect usage data** | A drawer over the inventory. **Add an app:** app name, owner, renewal date, annual spend, seats, then the API docs link **or** an OpenAPI file. **Connect usage data** (a listed app): only the docs part. **In library** (hidden for now): "App X is in the platform library" → **Connect with your token** | **Save app** (inventory only) / **Build with AI**. A duplicate app is refused. Closing with unsaved input asks "Leave without saving?" (Discard / Save app) |
+| **F3 Build progress** | F3–F6 are one full-screen task with a step list on the left (Read the docs → Review → Connect and test → Savings → Go live). F3: the current step in plain words ("Step 2 of 4: Drafting the connector" and what that means), the time so far, a progress bar, what each step does, and an activity list with how long each step took. Usually 1 to 2 minutes | Plain error if the docs can't be read: "Upload the app's OpenAPI file or try another docs link". Leaving and coming back picks the progress up again |
+| **F4 What we found** | Plain summary cards: **Login** (type, role, exact scopes), **Users** (where they come from), **Usage** (tier badge, definition, "proxy" label), **Limits**, **Warnings**. A **Proved** badge beside each answer opens its quote and page; conflicts are explained there. A note says what our templates write instead of the AI (client, error handling, paging, logging) | Buttons: **Looks right** / **This looks wrong** (a hint, with examples of hints that help; the docs still decide) |
+| **F5 Connect + test** | Token instructions and a scope checklist (no token with sample data). Trust note: "Encrypted, read-only, never shared with the AI." A live test (Login ✓ Users ✓ Usage ✓ Mapping ✓), results (users, with activity, pages, requests), **what the generated code covers**: the assignment's six items, each ticked. Tabs: **Generated code** (the six items highlighted) and **Run log** (every request, never bodies or tokens) | Plain errors with the fix, e.g. "This token needs the Owner or Admin role and the scheduled_events:read scope" |
+| **F6 Savings preview** | 48 users · 6 left the company (HRIS) · 11 hosted no meetings in 90 days (proxy) · 60 seats bought, 12 never assigned · **$6,960 a year recoverable before the renewal on 26 Dec**. Every number shows its source. A deactivated account or a free guest is never counted as a seat to recover | Confirm → Go live → the app page. A mismatch with SSO over 2% needs a note |
 | **F7 Connector detail** | Status, last sync, runs, versions with diff, token owner + offboarding warning, **Download data card** (for security review), Generated code | "Needs repair" with the proposed fix |
-| **F8 Platform internal** | Library review queue (approve/reject), fleet health (used by N, failure rate, canary status), Opportunity Map (sample data) | Approve to library / approve repair |
+| **F8 Platform internal** | Hidden for now (§15). Library review queue (approve/reject), fleet health (used by N, failure rate, canary status), Opportunity Map (sample data) | Approve to library / approve repair |
+| **F9 App page** | One app from the inventory. Cards: users, active accounts, no activity in 30 days, seats paid for ("12 seats nobody holds"). Tabs: **Users** (every user the generated code retrieved: name or email, role, status, last active, usage with its label; search, status filter, 25 per page), **Connector** (status, data source, last test, users retrieved, tier, docs, version → F7), **Contract** (owner, spend, seats, price per seat, renewal) | This is where "code to retrieve users and usage data" is seen working. Before a connector has data: "No usage data yet" and the next step, never made-up numbers |
 
 ---
 
@@ -514,8 +517,8 @@ All numbers below are **assumptions to replace with the company's real data**. T
 
 | Phase | What | Gate to move on |
 |---|---|---|
-| 0 Prototype | Generic engine; Zendesk, Calendly, Notion + a surprise app; library with review; savings preview; 27-draft model benchmark | Counts match the admin screens on all 3 apps; security tests pass; benchmark done |
-| 1 Internal build team | Builds long-tail connectors from the Opportunity Map; 30-app backtest; final model choice; data cards | Backtest score agreed with the company |
+| 0 Prototype | Generic engine; Zendesk, Calendly, Notion + a surprise app; Slack sample connector; library with review (built, hidden from the screens for now: §15); savings preview; 27-draft model benchmark | Counts match the admin screens on all 3 apps; security tests pass; benchmark done |
+| 1 Internal build team | Builds long-tail connectors from the Opportunity Map; 30-app backtest; final model choice; data cards; a second allowed host for the OAuth token call only (Zoom signs in at zoom.us, reads at api.zoom.us) | Backtest score agreed with the company |
 | 2 Customer beta | Self-serve for library + new builds (T1–T3); renewal trigger; fleet health; token governance | Beta targets in §11 met; customer security reviews signed off |
 | 3 GA | Platform-registered OAuth apps (Slack etc.); POST-search and GraphQL reads with review; one-call-per-user usage; bulk OpenAPI import; connector data through the platform's MCP server | Read-only data trusted across customers |
 | 4 Beyond read | Remove or downgrade seats with approvals; feature-level usage; apps with no API via browser automation | — |
@@ -552,23 +555,27 @@ Their answers replace the assumptions above.
 
 ## 15. 5-minute demo script
 
-**Setup.** Two demo tenants:
-- **Acme** runs on **demo data**: recorded API responses for a fake 48-person company, clearly labelled on screen. This gives realistic savings numbers.
-- **Globex** runs **live** on a real Calendly account, which proves the code works on the real API.
+> **Prototype screens today: one customer (Acme).** The tenant switcher, the Library and the platform review queue are built in the engine but hidden from the screens, so the demo stays on what the assignment asks. They come back next (the beat after the table).
 
-In these demo tenants Calendly has no connector yet. (The platform does have a native one; we use Calendly because it is the assignment's example, and the native connector is our answer key.)
+**Setup.**
+- **Acme** runs on **demo data**: recorded API responses for a fake 48-person company, clearly labelled on screen. This gives realistic savings numbers.
+- **Globex**, a second tenant on a real Calendly account, is hidden with the tenant switcher for now.
+- Acme's inventory: **Zendesk**, **Notion** and **Slack** are already connected on sample data (tagged "Sample data"), so their app pages show realistic users from the start: Zendesk 37 agents (T1, last login), Notion 87 members (T3, SSO fallback), Slack 146 accounts with owners, admins, guests and deactivated people (T2, last sign-in from the access logs). They were built from hand-written specs and tested by the same engine on recorded answers, so the users on those pages were really pulled by generated code. **Zoom** stays "No usage data": its login server is a different host from its API, and our one-host rule doesn't allow that yet (§13).
+- **Calendly is not in the list.** The demo adds it live with **+ Add an app**. (The platform does have a native one; we use Calendly because it is the assignment's example, and the native connector is our answer key.)
 
 | Time | Beat |
 |---|---|
-| 0:00–0:30 | **Acme inventory:** Calendly shows its spend, "Renews in 58 days" and "No usage data". Click **Connect usage data**. Not in the library, so **Build with AI** |
-| 0:30–1:30 | Paste the Calendly docs link. The AI fills the spec live. **What we found:** T2, Owner/Admin + 3 scopes, usage = meetings hosted (90 days, proxy). Open the evidence drawer and show the rate-limit conflict chip |
+| 0:00–0:30 | **Acme inventory:** three apps already connected on sample data; open Slack's page to show what "connected" looks like. Then **+ Add an app**: Calendly, Marketing Ops, $14,400, 60 seats, renews 26 Dec 2026, docs link → **Build with AI** |
+| 0:30–1:30 | The build runs live (about 1.5 minutes): each step says what it is doing. **What we found:** T2, Owner/Admin + 3 scopes, usage = meetings hosted (90 days, proxy). Click a **Proved** badge to show its quote |
 | 1:30–2:15 | Paste the token. Open the **Generated code** tab and point to the six items. The test passes |
 | 2:15–3:00 | **Savings preview:** 48 users · 6 left · 11 inactive · 12 seats never assigned · **$6,960/yr before 26 Dec**. Confirm → Live |
-| 3:00–3:45 | Submit to library → switch to the **platform internal** view → approve → switch to **Globex** (live). Calendly shows "In library". Paste Globex's own token; its own test runs; live with real data |
+| 3:00–3:45 | **App page:** click Calendly in the inventory → 48 users with status, last active and meetings hosted, straight from the generated code (search "aarav", filter by status). Then **+ Add an app**: name, owner, spend, seats, renewal date, docs link → **Save app**; it appears in the list and the cards |
 | 3:45–4:30 | **Surprise app:** paste the docs of an app the builder has never seen → spec drafted → test |
 | 4:30–5:00 | **Safety and model:** a blocked prompt-injection doc and a blocked DELETE call, then the benchmark table ("We use X: N/9 passed, $Y per connector") |
 
-**Backup:** a 3-minute recorded video of the same run.
+**Next (hidden for now):** submit to library → the **platform internal** view → approve → **Globex** (live) sees Calendly "In library", pastes its own token; its own test runs; live with real data.
+
+**Screenshots:** a script clicks through the same run and saves every screen (`prototype/scripts/demo-walkthrough.mjs`); they answer the assignment's "Can you generate the Figma?" alongside the live prototype.
 
 ---
 

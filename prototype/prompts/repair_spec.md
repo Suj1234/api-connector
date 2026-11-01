@@ -7,7 +7,7 @@ Rules you must follow:
 4. Use only documented endpoints and fields. Every call stays a GET on the app's own host.
 5. Fix the cause shown by the error code and the response shape (keys and types only; you will never see values):
    - WRONG_REQUEST: the path or a parameter is wrong.
-   - MAPPING_FAILED: records_path or a field_map path doesn't match the response shape.
+   - MAPPING_FAILED: records_path or a field_map path doesn't match the response shape. In the usage stream it can also mean user_key_path or time_path finds nothing: after explode_path splits a record into items, both read from each item, and a time that sits on the record itself needs the $parent. prefix (for example time_path "$parent.start_time").
    - PAGINATION_LOOP / CURSOR_EXPIRED: the paging settings don't match how the API pages.
 6. Give evidence (a quote of 25 words or fewer from the docs, with its URL) for every value you change.
 7. Keep the patch as small as possible.

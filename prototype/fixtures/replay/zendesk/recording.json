@@ -232,6 +232,10 @@
      "has_more": true,
      "after_cursor": "cursor-users-1",
      "before_cursor": null
+    },
+    "links": {
+     "next": "https://acme-demo.zendesk.com/api/v2/users?role%5B%5D=agent&role%5B%5D=admin&page%5Bafter%5D=cursor-users-1",
+     "prev": null
     }
    }
   },
@@ -423,6 +427,10 @@
      "has_more": false,
      "after_cursor": null,
      "before_cursor": null
+    },
+    "links": {
+     "next": null,
+     "prev": null
     }
    }
   }

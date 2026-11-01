@@ -135,7 +135,15 @@ def compute(
     cost = float(files.contract["annual_cost"]) if files.contract else None
     never_assigned = max(0, seats - billable) if seats is not None else None
     price = round(cost / seats, 2) if cost is not None and seats else None
-    recoverable = counts["left"] + counts["inactive"] + (never_assigned or 0) if seats is not None else None
+    # A deactivated account, or one the app doesn't bill (a free guest), has no seat to give back.
+    holding = sum(
+        1
+        for u, p in zip(users, people, strict=True)
+        if p["bucket"] in ("left", "inactive")
+        and u.get("status") != "deactivated"
+        and u.get("is_billable") is not False
+    )
+    recoverable = holding + (never_assigned or 0) if seats is not None else None
     renewal = files.contract.get("renewal_date") if files.contract else None
     days = (date.fromisoformat(renewal) - today.date()).days if renewal else None
     assigned = (

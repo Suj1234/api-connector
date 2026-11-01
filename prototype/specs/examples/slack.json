@@ -1,0 +1,119 @@
+{
+  "spec_version": "1.1",
+  "origin": "hand_written",
+  "app": {
+    "name": "Slack",
+    "docs_url": "https://docs.slack.dev/reference/methods/users.list/",
+    "api_host_pattern": "slack.com",
+    "tier": "T2",
+    "tier_reason": "users.list has no activity field; the last sign-in per user comes from the separate team.accessLogs endpoint (paid plans)"
+  },
+  "variables": [],
+  "base_url": "https://slack.com/api",
+  "auth": {
+    "type": "bearer_token",
+    "fields": [
+      {
+        "name": "token",
+        "label": "User OAuth token (xoxp-)",
+        "secret": true
+      }
+    ],
+    "bearer_template": "{secrets.token}",
+    "scopes": [
+      "users:read",
+      "users:read.email",
+      "admin"
+    ],
+    "role_required": "Workspace Owner or Admin (team.accessLogs needs a user token with the admin scope)",
+    "setup_steps": [
+      "api.slack.com/apps > Create New App > From scratch, in your workspace",
+      "OAuth & Permissions > User Token Scopes: add users:read, users:read.email and admin",
+      "Install to Workspace as an Owner or Admin, then copy the User OAuth Token (starts with xoxp-)"
+    ]
+  },
+  "default_headers": {
+    "Accept": "application/json"
+  },
+  "rate_limit": {
+    "requests_per_minute": 20,
+    "plan_note": "users.list and team.accessLogs are both Tier 2 (20+ per minute)",
+    "headers": {},
+    "retry_after_header": "Retry-After"
+  },
+  "bootstrap": [],
+  "streams": {
+    "users": {
+      "method": "GET",
+      "path": "/users.list",
+      "query": {
+        "limit": "200"
+      },
+      "records_path": "members[?is_bot == `false` && id != 'USLACKBOT']",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "cursor",
+        "next_cursor_path": "response_metadata.next_cursor"
+      },
+      "field_map": {
+        "external_id": "id",
+        "email": "profile.email",
+        "name": "profile.real_name",
+        "role": "is_primary_owner && 'Primary owner' || is_owner && 'Owner' || is_admin && 'Admin' || is_ultra_restricted && 'Single-channel guest' || is_restricted && 'Multi-channel guest' || 'Member'",
+        "status": {
+          "path": "deleted",
+          "map": {
+            "true": "deactivated",
+            "false": "active"
+          },
+          "default": "unknown"
+        },
+        "is_admin": "is_admin",
+        "is_billable": "!deleted && !is_ultra_restricted"
+      }
+    },
+    "usage": {
+      "method": "GET",
+      "path": "/team.accessLogs",
+      "query": {
+        "limit": "999"
+      },
+      "records_path": "logins",
+      "pagination": {
+        "type": "cursor",
+        "request_param": "cursor",
+        "next_cursor_path": "response_metadata.next_cursor"
+      },
+      "aggregate": {
+        "explode_path": null,
+        "user_key_path": "user_id",
+        "join_on": "external_id",
+        "time_path": "date_last",
+        "window_days": 90,
+        "metrics": [
+          {
+            "target": "last_active_at",
+            "op": "max_time"
+          }
+        ]
+      }
+    }
+  },
+  "usage_definition": {
+    "metric_label": "Last sign-in",
+    "active_rule": {
+      "field": "last_active_at",
+      "op": "within_days",
+      "value": 30
+    },
+    "proxy": false,
+    "fallback": null
+  },
+  "warnings": [
+    "Slack answers errors with HTTP 200 and ok: false (for example paid_only on a free workspace, or missing_scope); the connector then finds no records",
+    "team.accessLogs is for paid workspaces only and needs a user token with the admin scope; a bot token can't call it",
+    "users.list includes deactivated people (deleted: true) and guests; Slackbot is listed with is_bot false, so it is dropped by its ID",
+    "Single-channel guests are free; multi-channel guests are billed like members",
+    "Slack's Fair Billing Policy already credits members inactive for more than 28 days; count that before estimating savings"
+  ]
+}

@@ -162,7 +162,7 @@ def test_prompt_injection_in_docs_is_contained() -> None:
     pages = {**PAGES, "/reference/users": DOCS / "injection.html"}
     fooled = good_spec()
     fooled["base_url"] = "https://collector.evil.example.net"
-    llm = ScriptedLLM([spec_to_draft(fooled)] * 3)
+    llm = ScriptedLLM([spec_to_draft(fooled)] * 4)  # draft, its shape fix, the evidence re-ask, its fix
     with pytest.raises(PipelineError) as err:
         pipeline(llm, [], docs_site(pages)).draft("Example App", f"{ROOT}/reference")
     assert err.value.code == "RULES_REJECTED"

@@ -10,6 +10,8 @@ import json
 import re
 from typing import Any
 
+from app.services.spec_validator import MAX_QUOTE_WORDS
+
 AUTH_EXTRA = {
     "bearer_token": ("bearer_template",),
     "basic": ("basic_username", "basic_password"),
@@ -82,11 +84,34 @@ def _field_map(entries: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def short_quote(quote: str) -> str:
+    """A quote over the limit keeps its first words. They are still copied word for word, so the evidence check
+    still finds them on the page; one long quote no longer stops a whole build at the rules check."""
+    words = quote.split()
+    return quote if len(words) <= MAX_QUOTE_WORDS else " ".join(words[:MAX_QUOTE_WORDS])
+
+
+def spec_pointer(field: str) -> str | None:
+    """The AI sometimes names a field the draft's way ("users_stream.path", "bootstrap[0].path"); the evidence
+    check reads the spec's JSON Pointer ("/streams/users/path"). None when it can't be one."""
+    pointer = "/" + re.sub(r"\[(\d+)\]", r"/\1", field.strip()).replace(".", "/").lstrip("/")
+    pointer = _in_aggregate(re.sub(r"^/(users|usage)_stream(?=/|$)", r"/streams/\1", pointer))
+    return pointer if re.fullmatch(r"(/[^/]+)+", pointer) else None
+
+
+def _in_aggregate(pointer: str) -> str:
+    """The draft keeps the usage aggregate's fields on the stream; the spec nests them under aggregate."""
+    return re.sub(r"^/streams/usage/(?=(explode_path|user_key_path|join_on|time_path|window_days|metrics)\b)",
+                  "/streams/usage/aggregate/", pointer)  # fmt: skip
+
+
 def _bare_host(value: Any) -> Any:
-    """'https://API.example.com/v2/' → 'api.example.com'. Only tidies the shape; the rule checks still judge it."""
+    """'https://API.example.com/v2/' or the regex '^api\\.example\\.com$' → 'api.example.com'.
+    Only tidies the shape; the rule checks still judge it."""
     if not isinstance(value, str):
         return value
-    host = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", "", value.strip())
+    host = re.sub(r"\\(.)", r"\1", value.strip().removeprefix("^").removesuffix("$"))
+    host = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://", "", host)
     host = re.split(r"[/?#]", host, maxsplit=1)[0]
     host = re.sub(r":\d+$", "", host).rstrip(".")
     return re.sub(r"[^{}]+(?=\{|$)", lambda m: m.group(0).lower(), host)  # placeholders keep their case
@@ -149,10 +174,13 @@ def draft_to_spec(draft: dict[str, Any]) -> dict[str, Any]:
         }
     evidence: dict[str, Any] = {}
     for item in draft.get("evidence", []):
+        field = spec_pointer(item.get("field") or "")
+        if field is None:
+            continue
         if item.get("openapi_pointer") is not None:
-            evidence[item["field"]] = {"source": "openapi", "pointer": item["openapi_pointer"]}
+            evidence[field] = {"source": "openapi", "pointer": item["openapi_pointer"]}
         elif item.get("url") and item.get("quote"):
-            evidence[item["field"]] = {"url": item["url"], "quote": item["quote"]}
+            evidence[field] = {"url": item["url"], "quote": short_quote(item["quote"])}
     spec: dict[str, Any] = {
         "spec_version": "1.1",
         "origin": "ai",

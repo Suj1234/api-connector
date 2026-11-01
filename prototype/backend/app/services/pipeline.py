@@ -1,12 +1,14 @@
 """The AI pipeline (TRD §8), P1–P8, with a progress event for every stage (for SSE in the UI).
 
 draft():   P1 fetch → P2 rank → P3 draft → P4 evidence (+1 re-ask) → P5 rules. Stops for admin review.
+           Stops early when the docs never name the app, or when fewer than half the fields are proved.
 test():    P6 codegen → P7 sandbox test → P8 repair (exit 4/6 only, max 3) → result.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -15,7 +17,7 @@ from app.config import PROTOTYPE, get
 from app.services import evidence_check, ranker
 from app.services.codegen import CodeCheck, check_code, render
 from app.services.docs_fetcher import DocsBundle, DocsUnreadableError, Fetcher
-from app.services.draft_convert import draft_to_spec
+from app.services.draft_convert import draft_to_spec, short_quote, spec_pointer
 from app.services.llm_client import LLMClient, LLMError, LLMResult
 from app.services.repair import (
     MAX_TRIES,
@@ -33,15 +35,22 @@ from runtime import helpers as h
 
 PROMPTS = PROTOTYPE / "prompts"
 HOST_POINTERS = {"/app/api_host_pattern", "/base_url"}  # host-shape mistakes the AI may fix once
+MIN_PROVED_PCT = 50.0  # fewer proved fields than this: the pages aren't the app's API docs
+COMMON_WORDS = {"app", "api", "com", "inc", "the", "and", "for", "net", "org"}
+# An API call written in the docs: "GET /users", "GET https://api.x.com/users" or a curl line. Every API reference
+# we tried has one (Calendly, Asana, Miro, Notion, Slack, Typeform); marketing sites and example.com have none.
+API_CALL = re.compile(r"\b(?:GET|POST|PUT|PATCH|DELETE)[ \t]+(?:https?://|/)\S+|\bcurl\b[^\n]{0,40}https?://")
+CURRENT_USER = {"me", "self", "myself", "whoami", "current_user", "current"}  # endpoints for the token's own account
 DRAFT_SCHEMA = json.loads((PROTOTYPE / "schemas" / "draft_spec.schema.json").read_text())
 Emit = Callable[[dict[str, Any]], None]
 
 
 class PipelineError(Exception):
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, message: str, calls: list[LLMCallLog] | None = None) -> None:
         super().__init__(f"{code}: {message}")
         self.code = code
         self.message = message
+        self.calls = calls or []  # the AI calls made before it stopped, for the cost record
 
 
 @dataclass
@@ -131,8 +140,15 @@ class Pipeline:
             except DocsUnreadableError as error:
                 self._event("fetch", "fail", "We couldn't read these docs", code="DOCS_UNREADABLE")
                 raise PipelineError("DOCS_UNREADABLE", str(error)) from error
-        source = "OpenAPI file and " if bundle.openapi else ""
-        self._event("fetch", "ok", f"Read {source}{len(bundle.pages)} pages")
+        if (bundle.pages or bundle.openapi) and not mentions_app(bundle, app_name):
+            self._event("fetch", "fail", f"These docs never mention {app_name}", code="DOCS_WRONG_APP")
+            raise PipelineError("DOCS_WRONG_APP", app_name)
+        if bundle.pages and not bundle.openapi and not any(API_CALL.search(p.text) for p in bundle.pages):
+            # A marketing site or help centre: before the AI, which would invent an "API" from it.
+            self._event("fetch", "fail", "These pages show no API calls", code="DOCS_NOT_API")
+            raise PipelineError("DOCS_NOT_API", "they show no API calls")
+        source = "the OpenAPI file" + (" and " if bundle.pages else "") if bundle.openapi else ""
+        self._event("fetch", "ok", f"Read {source}{f'{len(bundle.pages)} pages' if bundle.pages else ''}")
 
         self._event("draft", "start", "Drafting")
         chunks = ranker.rank(bundle, self.settings.token_budget)
@@ -143,22 +159,19 @@ class Pipeline:
             answer = self._ask("draft", self.settings.draft_model, system, prompt, DRAFT_SCHEMA, calls)
         except LLMError as error:
             self._event("draft", "fail", str(error), code="LLM_ERROR")
-            raise PipelineError("LLM_ERROR", str(error)) from error
-        draft = answer.data
+            raise PipelineError("LLM_ERROR", str(error), calls) from error
+        draft = self._fix_shape(answer.data, prompt, system, calls)
         spec = draft_to_spec(draft)
-        found = validate_spec(spec).issues
-        # A badly shaped host is a mistake worth one fix; any other rule break (a write call) is discarded.
-        fixable = [i for i in found if i.code != RULES_REJECTED or i.pointer in HOST_POINTERS]
-        if fixable and all(i.code != RULES_REJECTED or i.pointer in HOST_POINTERS for i in found):
-            issues = "\n".join(f"- {i.pointer}: {i.message}" for i in fixable[:20])
-            fix = f"{prompt}\n\nYour previous answer:\n{json.dumps(draft)}\n\nIt broke these rules. Fix them:\n{issues}"
-            draft = self._ask("draft_fix", self.settings.draft_model, system, fix, DRAFT_SCHEMA, calls).data
-            spec = draft_to_spec(draft)
+        if _token_owner_only(spec):  # before the evidence: proof of a one-person endpoint doesn't help
+            self._event("draft", "fail", "The users endpoint returns only the token's own account", code="NO_USERS_API")
+            raise PipelineError("NO_USERS_API", app_name, calls)
         self._event("draft", "ok", f"Tier {spec.get('app', {}).get('tier', '?')}")
 
         self._event("evidence", "start", "Checking evidence")
+        evidence_check.settle_conflicts(spec)  # the vendor's own page wins before the value is checked
         report = evidence_check.check(spec, bundle)
         if report.failed:
+            print(f"EVIDENCE_REASK {report.failed} given={sorted(spec.get('evidence', {}))}")  # pointers only
             failing = "\n".join(f"- {p}: {why}" for p, why in report.failed.items())
             reask = (
                 f"{prompt}\n\nYour previous answer:\n{json.dumps(draft)}\n\n"
@@ -166,14 +179,21 @@ class Pipeline:
                 f"or change the value to what the docs say:\n{failing}"
             )
             draft = self._ask("evidence_reask", self.settings.draft_model, system, reask, DRAFT_SCHEMA, calls).data
+            draft = self._fix_shape(draft, prompt, system, calls)  # the new answer may bring a new slip
             spec = draft_to_spec(draft)
+            evidence_check.settle_conflicts(spec)
             report = evidence_check.check(spec, bundle)
-        dropped = evidence_check.drop_unproven_optional(spec, report, bool(bundle.pages or bundle.openapi))
-        evidence_check.settle_conflicts(spec)
+        # A recorded stand-in has no quotes: its unproved fields say nothing about the docs or the fields.
+        docs_read = bool(bundle.pages or bundle.openapi) and answer.model != "recorded"
+        dropped = evidence_check.drop_unproven_optional(spec, report, docs_read)
+        proved = f"{len(report.verified)} of {len(report.verified) + len(report.failed)}"
+        if docs_read and report.verified_pct < MIN_PROVED_PCT:  # not an API reference: a help centre, a blog
+            self._event("evidence", "fail", f"Only {proved} fields proved by the docs", code="DOCS_NOT_API")
+            raise PipelineError("DOCS_NOT_API", f"only {proved} answers could be proved from them", calls)
         self._event(
             "evidence",
             "ok" if not report.failed else "warn",
-            f"{len(report.verified)} of {len(report.verified) + len(report.failed)} fields proved by the docs",
+            f"{proved} fields proved by the docs",
             verified_pct=round(report.verified_pct, 1),
         )
 
@@ -181,11 +201,25 @@ class Pipeline:
         result = validate_spec(spec)
         if not result.ok:
             code = result.error_code or "SCHEMA_INVALID"
-            first = result.issues[0]
+            first = next(i for i in result.issues if i.code == code)  # the issue the code is about
             self._event("rules", "fail", f"{first.pointer}: {first.message}", code=code)
-            raise PipelineError(code, f"{first.pointer}: {first.message}")
+            raise PipelineError(code, f"{first.pointer}: {first.message}", calls)
+        if _token_owner_only(spec):  # the evidence re-ask may have changed the endpoint
+            self._event("rules", "fail", "The users endpoint returns only the token's own account", code="NO_USERS_API")
+            raise PipelineError("NO_USERS_API", app_name, calls)
         self._event("rules", "ok", "Read-only, one host, no secrets in URLs")
         return DraftOutcome(spec, bundle, report, dropped, calls, draft)
+
+    def _fix_shape(self, draft: dict[str, Any], prompt: str, system: str, calls: list[LLMCallLog]) -> dict[str, Any]:
+        """A badly shaped host or placeholder is a mistake worth one fix; any other rule break (a write call, a
+        secret outside auth) is left for the rules check to discard."""
+        found = validate_spec(draft_to_spec(draft)).issues
+        fixable = [i for i in found if i.code != RULES_REJECTED or _shape_mistake(i.pointer, i.message)]
+        if not fixable or len(fixable) != len(found):
+            return draft
+        issues = "\n".join(f"- {i.pointer}: {i.message}" for i in fixable[:20])
+        fix = f"{prompt}\n\nYour previous answer:\n{json.dumps(draft)}\n\nIt broke these rules. Fix them:\n{issues}"
+        return self._ask("draft_fix", self.settings.draft_model, system, fix, DRAFT_SCHEMA, calls).data
 
     # --- P6–P8 ----------------------------------------------------------------------
 
@@ -230,20 +264,47 @@ class Pipeline:
                     "repair", model, (PROMPTS / "repair_spec.md").read_text(), prompt, PATCH_SCHEMA, calls
                 )
                 patched = apply_patch(spec, to_operations(answer.data))
-                verdict = validate_spec(patched)
+                for item in answer.data.get("evidence", []):
+                    field = spec_pointer(item["field"])
+                    if field and item["url"].startswith(("http://", "https://")) and item["quote"].strip():
+                        quoted = {"url": item["url"], "quote": short_quote(item["quote"])}  # a file has no page to cite
+                        patched.setdefault("evidence", {})[field] = quoted
+                verdict = validate_spec(patched)  # after the evidence: codegen checks the whole spec again
                 if not verdict.ok:
                     raise PatchRejectedError(f"{verdict.error_code}: {verdict.issues[0].message}")
             except (LLMError, PatchRejectedError) as error:
                 repairs.append({"attempt": attempt, "model": model, "accepted": False, "reason": str(error)[:300]})
                 self._event("repair", "fail", "The proposed fix was rejected", attempt=attempt)
                 continue
-            for item in answer.data.get("evidence", []):
-                patched.setdefault("evidence", {})[item["field"]] = {"url": item["url"], "quote": item["quote"]}
             repairs.append(
                 {"attempt": attempt, "model": model, "accepted": True, "diagnosis": answer.data.get("diagnosis", "")}
             )
             self._event("repair", "ok", answer.data.get("diagnosis", "Patched"), attempt=attempt)
             spec = patched
+
+
+def _token_owner_only(spec: dict[str, Any]) -> bool:
+    """A "users list" that is really the current-user call (GET /me, or the bootstrap call itself) returns one
+    person, so the test would pass with a single user."""
+    path = str(spec["streams"]["users"].get("path") or "").rstrip("/")
+    last = path.rsplit("/", 1)[-1].lower()
+    return last in CURRENT_USER or path in {str(step.get("path", "")).rstrip("/") for step in spec.get("bootstrap", [])}
+
+
+def _shape_mistake(pointer: str, message: str) -> bool:
+    return pointer in HOST_POINTERS or message.startswith(("Invalid placeholder", "Unknown placeholder"))
+
+
+def mentions_app(bundle: DocsBundle, app_name: str) -> bool:
+    """Docs for another app never name this one: a word of its name (3+ letters) must appear somewhere."""
+    words = {w for w in re.findall(r"[a-z0-9]{3,}", app_name.lower()) if w not in COMMON_WORDS}
+    if not words:
+        return True  # too short to check, like "X"
+    texts = [f"{p.url} {p.title} {p.text}" for p in bundle.pages]
+    if bundle.openapi:
+        texts.append(json.dumps({k: bundle.openapi.get(k) for k in ("info", "servers", "host")}))
+    blob = " ".join(texts).lower()
+    return any(word in blob for word in words)
 
 
 def _host(spec: dict[str, Any], variables: dict[str, str], payload: dict[str, Any]) -> str:

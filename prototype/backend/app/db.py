@@ -26,11 +26,16 @@ TENANTS = [
 ]
 INVENTORY = {
     "acme": [
-        ("Calendly", "Marketing Ops", 14400, 60, "2026-12-26"),
         ("Zendesk", "Support", 38000, 40, "2027-02-15"),
         ("Notion", "IT", 12000, 100, "2027-03-31"),
-        ("Slack", "IT", 52000, 140, "2027-05-01"),
+        ("Slack", "IT", 25200, 140, "2027-05-01"),
         ("Zoom", "IT", 21000, 120, "2027-06-30"),
+        # Apps tried in testing, not connected: Connect usage data builds them from their docs. Typeform's API
+        # can't list users and Loom has no users API, so those two show how a build stops.
+        ("Asana", "Product", 18000, 75, "2027-03-01"),
+        ("Miro", "Design", 9600, 40, "2027-02-10"),
+        ("Typeform", "Marketing", 5000, 20, "2026-12-20"),
+        ("Loom", "Sales", 4800, 30, "2026-12-08"),
     ],
     "globex": [
         ("Calendly", "Sales Ops", 9600, 40, "2027-01-20"),
@@ -38,7 +43,6 @@ INVENTORY = {
         ("Notion", "Engineering", 8000, 60, "2027-02-28"),
     ],
 }
-NATIVE = {"Slack", "Zoom"}  # already connected by the platform's own connectors (shown, not built)
 
 
 class Database:
@@ -52,14 +56,16 @@ class Database:
         with self.factory() as session:
             yield session
 
-    def seed(self) -> None:
+    def seed(self) -> bool:
+        """True when this call filled a fresh database."""
         with contextlib.suppress(IntegrityError):  # another server instance seeded at the same moment
-            self._seed()
+            return self._seed()
+        return False
 
-    def _seed(self) -> None:
+    def _seed(self) -> bool:
         with self.session() as s:
             if s.scalar(select(Tenant).limit(1)) is not None:
-                return
+                return False
             live_tenant = get("LIVE_TENANT", "1") == "1"  # off in the hosted demo: no real tokens there
             for tenant_id, name, internal, mode in TENANTS:
                 if tenant_id == "globex" and not live_tenant:
@@ -77,6 +83,7 @@ class Database:
             for kind, name in (("hris", "hris.csv"), ("sso", "sso.csv"), ("contract", "contract.json")):
                 s.add(CrosscheckFile(tenant_id="acme", kind=kind, filename=name, content=_read(ACME_FILES / name)))
             s.commit()
+            return True
 
 
 def _read(path: Path) -> str:

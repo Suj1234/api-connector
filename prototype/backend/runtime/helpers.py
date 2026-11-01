@@ -31,6 +31,8 @@ def fmt_time(value: datetime) -> str:
 
 
 def parse_time(value: Any) -> datetime | None:
+    if isinstance(value, int | float) and not isinstance(value, bool) and value > 0:
+        return datetime.fromtimestamp(value, UTC)  # Unix seconds (e.g. Slack's access logs)
     if not isinstance(value, str) or not value:
         return None
     try:
@@ -120,19 +122,25 @@ def aggregate(
     """
     start = now - timedelta(days=window_days)
     out: dict[str, dict[str, Any]] = {}
+    seen = keyed = timed = 0
     for row in rows:
         items = search(explode_path, row) if explode_path else [row]
         if not isinstance(items, list):
             continue
         for item in items:
+            seen += 1
             key = search(user_key_path, item)
             if key is None:
                 continue
+            keyed += 1
             raw_time = (
                 search(time_path[len(PARENT) :], row) if time_path.startswith(PARENT) else search(time_path, item)
             )
             when = parse_time(raw_time)
-            if when is None or not start <= when <= now:
+            if when is None:
+                continue
+            timed += 1
+            if not start <= when <= now:
                 continue
             values = out.setdefault(str(key), {})
             for metric in metrics:
@@ -147,6 +155,11 @@ def aggregate(
                     current = parse_time(values.get(target))
                     if current is None or when > current:
                         values[target] = fmt_time(when)
+    # Records came back but none names a user or a time: the mapping is wrong (repairable), not an idle org.
+    if seen and not keyed:
+        raise ConnectorError("MAPPING_FAILED", detail=f"user_key_path {user_key_path!r} found no user in usage records")
+    if keyed and not timed:
+        raise ConnectorError("MAPPING_FAILED", detail=f"time_path {time_path!r} found no time in the usage records")
     return out
 
 

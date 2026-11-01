@@ -640,7 +640,8 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "JMESPath to a list inside each record (one item per user), or null"
         },
         "user_key_path": {
           "type": "string"
@@ -653,7 +654,8 @@
           ]
         },
         "time_path": {
-          "type": "string"
+          "type": "string",
+          "description": "JMESPath on each item; start with $parent. to read from the record before explode_path split it"
         },
         "window_days": {
           "type": "integer"

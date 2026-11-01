@@ -278,6 +278,7 @@
     ],
     "pagination": {
      "count": 25,
+     "next_page": "https://api.calendly.com/organization_memberships?organization=https%3A%2F%2Fapi.calendly.com%2Forganizations%2Fcaf9df3b-20e2-5010-b041-27b051a8bec8&page_token=cursor-organization_memberships-1",
      "next_page_token": "cursor-organization_memberships-1"
     }
    }
@@ -525,6 +526,7 @@
     ],
     "pagination": {
      "count": 23,
+     "next_page": null,
      "next_page_token": null
     }
    }
@@ -534,9 +536,9 @@
    "url": "https://api.calendly.com/scheduled_events",
    "query": {
     "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
-    "min_start_time": "*",
-    "max_start_time": "*",
-    "status": "active",
+    "min_start_time": "*?",
+    "max_start_time": "*?",
+    "status": "*?",
     "count": "*?"
    },
    "body": {
@@ -1974,6 +1976,7 @@
     ],
     "pagination": {
      "count": 100,
+     "next_page": "https://api.calendly.com/scheduled_events?organization=https%3A%2F%2Fapi.calendly.com%2Forganizations%2Fcaf9df3b-20e2-5010-b041-27b051a8bec8&page_token=cursor-scheduled_events-1",
      "next_page_token": "cursor-scheduled_events-1"
     }
    }
@@ -1983,9 +1986,9 @@
    "url": "https://api.calendly.com/scheduled_events",
    "query": {
     "organization": "https://api.calendly.com/organizations/caf9df3b-20e2-5010-b041-27b051a8bec8",
-    "min_start_time": "*",
-    "max_start_time": "*",
-    "status": "active",
+    "min_start_time": "*?",
+    "max_start_time": "*?",
+    "status": "*?",
     "count": "*?",
     "page_token": "cursor-scheduled_events-1"
    },
@@ -2606,6 +2609,7 @@
     ],
     "pagination": {
      "count": 43,
+     "next_page": null,
      "next_page_token": null
     }
    }

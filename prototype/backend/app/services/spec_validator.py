@@ -87,7 +87,9 @@ def _schema_issues(spec: Any) -> list[Issue]:
     issues = []
     for err in sorted(validator.iter_errors(spec), key=lambda e: list(e.absolute_path)):
         pointer = "".join(f"/{p}" for p in err.absolute_path)
-        issues.append(Issue(SCHEMA_INVALID, pointer or "/", err.message))
+        # A whole object in the message is unreadable on a screen; name the problem instead.
+        message = "doesn't fit the connector format" if isinstance(err.instance, dict | list) else err.message
+        issues.append(Issue(SCHEMA_INVALID, pointer or "/", message))
     return issues
 
 
@@ -288,6 +290,8 @@ class _RuleChecker:
             return
         if not isinstance(value, str):
             return
+        if any(brace in PLACEHOLDER.sub("", value) for brace in "{}"):  # nested or broken, like {a_or:{b}}
+            self.reject(pointer, f"Invalid placeholder in '{value[:80]}': one pair of braces, nothing nested")
         for name in PLACEHOLDER.findall(value):
             secret = SECRET_REF.match(name)
             if secret:

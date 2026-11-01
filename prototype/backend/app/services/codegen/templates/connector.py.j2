@@ -162,7 +162,8 @@ class Client:
         self.log.add_secret(token)
         return token
 {% endif %}
-    # 4. Error handling: retry, backoff and plain error codes. 6. Logging: one line per request.
+    # 4. Error handling: retry, backoff and plain error codes.
+    # 6. Logging: one line per request (step, method, path, status, time); never a token or a body.
     def request(
         self, step: str, path_or_url: str, params: list[tuple[str, str]] | None = None
     ) -> httpx.Response:

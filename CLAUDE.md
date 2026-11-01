@@ -8,19 +8,19 @@ A take-home assignment for a Senior PM role.
 - **PRD:** `PRD.md` (v4). Product thinking: what and why.
 - **TRD:** `TRD.md`. The technical build spec (was PRD Appendix A). **Build from the TRD.**
 - **DESIGN:** `DESIGN.md`. Colours, type, components, writing rules, screen layouts. **The UI uses only its tokens.**
-- **EVAL:** `EVAL.md`. The AI quality eval (benchmark), acceptance scenarios SC-01 to SC-17, security tests, test plan.
+- **EVAL:** `EVAL.md`. The AI quality eval (benchmark), acceptance scenarios SC-01 to SC-28, security tests, test plan.
 - **README:** `README.md`. The panel's front page: reading order and the one-line idea.
 - **GitHub:** https://github.com/Suj1234/api-connector
 
 **Goal:** a working prototype for a 5-minute demo (PRD §15). **One generic engine. No app-specific code outside `specs/`.**
-1. App inventory → **Connect usage data**.
-2. Library check: if the app is in the library, the admin only pastes a token.
-3. Paste the app's API docs.
+1. App inventory → **Connect usage data**, or **Add an app** for an app not in the list (owner, annual spend, seats, renewal date; **Save app** or **Build with AI**).
+2. Library check: if the app is in the library, the admin only pastes a token (built; hidden from the screens for now).
+3. Give the app's API docs link **or** its OpenAPI file.
 4. AI (Gemini) fills a connector spec, with a docs quote as evidence for every field.
 5. Templates generate the connector code covering the 6 assignment items: client, auth, users + usage, error handling, pagination, logging.
 6. Sandboxed test run, in `live` (real API) or `replay` (recorded demo data) mode.
-7. Savings preview from the sample HRIS / SSO / contract files.
-8. Submit to library → internal review → a second tenant connects with its own token (its own test still runs).
+7. Savings preview from the sample HRIS / SSO / contract files, and the **app page** listing the users and usage the connector retrieved.
+8. Submit to library → internal review → a second tenant connects with its own token (its own test still runs). Built in the engine; hidden from the screens for now (PRD §15).
 9. A "surprise app" is pasted live to prove the engine is generic.
 
 **Test apps:**
@@ -110,10 +110,10 @@ A take-home assignment for a Senior PM role.
      - the benchmark (`EVAL.md` §2) produces its results table.
 6. **UI**
    - Build:
-     - screens F1–F8 (PRD §7, layouts in `DESIGN.md` §8) with SSE progress
-     - styling only from the `DESIGN.md` tokens (navy primary `#0A2540`, IBM Plex Sans); no raw hex in components
-     - tenant switcher (`acme`, `globex`, `internal`)
-     - library submit → approve → connect
+     - screens F1–F9 (PRD §7, layouts in `DESIGN.md` §8) with SSE progress
+     - every component copies the dashboard design reference's part of the same name (`DESIGN.md` §6); our own are only the logo, Log out, the footer and the font
+     - styling only from the `DESIGN.md` tokens (blurple primary `#635BFF`, navy `#0A2540` only for dark brand surfaces, IBM Plex Sans); no raw hex in components
+     - one company on screen (`acme`); the tenant switcher, library submit → approve → connect and the internal view are built but hidden for now
      - savings preview (TRD §11) from `fixtures/acme/`
      - Generated code tab
      - "Sample data" labels in replay mode
@@ -122,15 +122,24 @@ A take-home assignment for a Senior PM role.
 7. **Polish for demo**
    - Build:
      - README with run steps
-     - backup video
+     - screenshots of every screen (`scripts/demo-walkthrough.mjs`, which also checks the whole flow works)
      - SHOULD items, if time allows
    - Done when:
-     - scenarios SC-01 to SC-17 (`EVAL.md` §3) pass.
+     - scenarios SC-01 to SC-28 (`EVAL.md` §3) pass.
 
 ## Build status (29 Oct 2026)
 
-- Milestones 1, 2, 3, 5, 6 done; 7 done except the final video, which is recorded on Sujeet's Mac with Gemini on.
+- Milestones 1, 2, 3, 5, 6 and 7 done. No backup video: the assignment doesn't ask for one (decided 31 Oct); the walkthrough script saves a screenshot of every screen instead.
 - Hosted at https://integration-builder-five.vercel.app (Vercel, Postgres, login on). 29 Oct: the full flow passed there with real Gemini and real docs (Calendly, sample data): build → test → savings → go live → library → second tenant.
+- 31 Oct (local, not yet deployed): UI rebuilt from the dashboard design reference; **Add an app** asks for the inventory details and can **Save app** without building; the **app page** (F9) shows the users and usage the connector retrieved; the tenant switcher and library are hidden; Slack and Zoom are no longer shown as "Connected (native)". SC-18 to SC-23 checked by hand, no automated tests yet.
+- 31 Oct, later (local, not yet deployed):
+  - **Sample apps:** a fresh database gets Zendesk, Notion and a new Slack sample connected on sample data, built by the engine from `specs/examples/`. Calendly is no longer seeded; the demo adds it with Add an app. Zoom isn't seeded (its token host differs from its API host).
+  - **Speed:** a Calendly build now takes about 1.5–2 min instead of about 6 (parallel docs reading, Gemini thinking capped at low, the mypy cache). The progress screens reconnect instead of freezing.
+  - **Correctness:** a usage mapping guard (no more silent zeros); the `$parent.` rule in the draft and repair prompts; recoverable seats count only seat holders.
+  - **Screens:** the build flow (F3–F6) is one full-screen task built from the reference's FocusHeader, Stepper and Timeline. Connector detail is redone; Banner, Metric, Spinner, Toast and BreakdownBar now copy the reference.
+  - **Checks:** SC-24 to SC-27 checked by hand and with live Gemini runs. pytest was not run.
+- 1 Nov (local, not yet deployed): fixes from an end-to-end test round (SC-28). An OpenAPI file alone now works; wrong docs stop early (`DOCS_WRONG_APP`, `DOCS_NOT_API`); "Proved" also checks the host, paths and rate number; Calendly's rate limit reads 500 a minute (tables built from `<div>`s were dropped before); token-like text leaves hints; clearer messages for bad links, a past renewal date and a missing token.
+- 1 Nov, final round (local, not yet deployed): every finding fixed and the fixed checklist (`EVAL.md` §7) passed through the screens with live Gemini, including the walkthrough script on the final code. Asana, Miro, Typeform and Loom are now in the sample inventory, not connected.
 - Milestone 4 (live vendor APIs) and the real benchmark wait on test accounts (vendor tokens).
 - Scenario status: `EVAL.md` §6. Run steps: `prototype/README.md`. Build decisions: `TRD.md` §15.
 

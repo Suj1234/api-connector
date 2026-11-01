@@ -9,24 +9,27 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import threading
 import time
 import traceback
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import DOCS_CACHE, PROTOTYPE, get, on_vercel, writable_data_dir
-from app.db import Database, contract_for
+from app.db import Database
 from app.models.tables import (
     AppUser,
     AuditEvent,
@@ -52,6 +55,8 @@ from app.services.vault import Sealed, Vault
 from runtime import helpers as h
 
 REPLAY = PROTOTYPE / "fixtures" / "replay"
+EXAMPLES = PROTOTYPE / "specs" / "examples"
+SAMPLE_APPS = ("Zendesk", "Notion", "Slack")  # connected on sample data in a fresh database (PRD §15)
 TENANTS = ("acme", "globex", "internal")
 LIBRARY_MIN_SHOWN = 5
 PLAIN = {
@@ -67,12 +72,16 @@ PLAIN = {
     "SERVER_ERROR": "The app is having problems right now. Retry later.",
     "UNREACHABLE": "We couldn't reach {host} from the sandbox. Check that this machine can reach the internet, then retry.",
     "HOST_BLOCKED": "Blocked: the connector tried to reach a server other than {host}. Nothing was sent. The platform team has been alerted.",
-    "RULES_REJECTED": "This draft broke a safety rule (shown above), so we discarded it. No code was generated or run.",
+    "RULES_REJECTED": "This draft broke a safety rule ({detail}), so we discarded it. No code was generated or run.",
     "DOCS_UNREADABLE": "We couldn't read these docs. Upload the app's OpenAPI file or try another docs link.",
     "SSRF_BLOCKED": "That link points to a private or internal address. Use the app's public docs link.",
-    "SCHEMA_INVALID": "The AI's draft didn't fit the connector format, even after one retry. Add a hint and try again.",
+    "SCHEMA_INVALID": "The AI's draft didn't fit the connector format, even after one retry. Check that the link is the app's API reference, then add a hint and try again.",
     "LLM_ERROR": "The AI service didn't answer: {detail}",
-    "BAD_INPUT": "Some connection details are missing or in the wrong format: {detail}",
+    "BAD_INPUT": "Some connection details are missing or wrong ({detail}). Add them under Connect, then test again.",
+    "BAD_LINK": "Paste the docs link in full, starting with https://, with no spaces.",
+    "DOCS_WRONG_APP": "These docs never mention {detail}. Check that the link is {detail}'s API docs, or upload its OpenAPI file.",
+    "DOCS_NOT_API": "These pages don't look like an API reference: {detail}. Use the link to the app's API reference, or upload its OpenAPI file.",
+    "NO_USERS_API": "{detail}'s API doesn't list your company's users: the only user endpoint in these docs returns just the token's own account. Look in its docs for an admin or members endpoint, or keep using SSO data for {detail}.",
     "NO_DEMO_DATA": "There is no demo data for this app, so the test needs its real API and a token.",
     "CODEGEN_FAILED": "The generated code failed its checks. The platform team has been told.",
 }  # fmt: skip
@@ -81,9 +90,11 @@ PLAIN = {
 class State:
     def __init__(self) -> None:
         self.db = Database()
-        self.db.seed()
+        fresh = self.db.seed()
         self.vault = Vault(_vault_key())
         self.bundles: dict[int, DocsBundle] = {}
+        if fresh and get("SAMPLE_APPS", "1") == "1":
+            threading.Thread(target=_prebuild_samples, args=(self,), daemon=True).start()
 
     def settings(self) -> Settings:
         settings = Settings()
@@ -121,6 +132,13 @@ async def unexpected_error(request: Request, error: Exception) -> JSONResponse:
         f"UNEXPECTED {request.url.path}: {type(error).__name__}: {str(error)[:500]} at {origin.filename}:{origin.lineno}"
     )
     return JSONResponse({"detail": "Something went wrong on our side."}, status_code=500)
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request(request: Request, error: RequestValidationError) -> JSONResponse:
+    """One plain sentence naming the fields, instead of the framework's list (which echoes the values)."""
+    fields = sorted({str(e["loc"][-1]).replace("_", " ") for e in error.errors() if e.get("loc")})
+    return JSONResponse({"detail": f"Check these fields: {', '.join(fields)}."}, status_code=422)
 
 
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -252,6 +270,9 @@ def _message(code: str | None, spec: dict[str, Any] | None = None, detail: str =
         return None
     template = PLAIN.get(code, code)
     auth = (spec or {}).get("auth", {})
+    if code == "BAD_INPUT":  # the field's label ("API token"), not its name ("access_token")
+        for field in auth.get("fields", []):
+            detail = re.sub(rf"\b{re.escape(field['name'])}\b", field["label"], detail)
     return template.format(
         scopes=", ".join(auth.get("scopes", [])) or "no special scopes",
         role=auth.get("role_required") or "admin",
@@ -296,11 +317,8 @@ def status(st: State_) -> dict[str, Any]:
 
 @app.get("/api/inventory")
 def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
-    today = datetime.now(UTC).date()
+    today = datetime.now(UTC).date()  # renewals are calendar dates, even for sample data
     with st.db.session() as s:
-        t = s.get(Tenant, tenant)
-        if t and t.run_mode_default == "replay":
-            today = datetime(2026, 10, 29, tzinfo=UTC).date()  # the demo data's recording date
         rows = []
         for item in s.scalars(select(InventoryApp).where(InventoryApp.tenant_id == tenant)):
             connector = s.scalar(
@@ -310,7 +328,7 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                 .limit(1)
             )
             library = _library_for(s, item.app)
-            usage_status = "Connected (native)" if item.app in {"Slack", "Zoom"} else "No usage data"
+            usage_status = "No usage data"
             if connector is not None and connector.status.startswith("live"):
                 usage_status = "Connected" if connector.status == "live" else "Users only"
             rows.append(
@@ -322,8 +340,13 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                     "renewal_date": item.renewal_date.isoformat() if item.renewal_date else None,
                     "days_to_renewal": (item.renewal_date - today).days if item.renewal_date else None,
                     "usage_status": usage_status,
-                    "native": item.app in {"Slack", "Zoom"},
-                    "connector": {"id": connector.id, "status": connector.status} if connector else None,
+                    "connector": {
+                        "id": connector.id,
+                        "status": connector.status,
+                        "sample": connector.run_mode == "replay",
+                    }
+                    if connector
+                    else None,
                     "in_library": library is not None,
                     "library_spec_id": library.id if library else None,
                 }
@@ -342,7 +365,7 @@ def inventory(tenant: Tenant_, st: State_) -> list[dict[str, Any]]:
                     "app": connector.app, "owner": None, "annual_cost": None, "seats": None,
                     "renewal_date": None, "days_to_renewal": None,
                     "usage_status": "Connected" if status == "live" else "Users only" if status == "live_users_only" else "No usage data",
-                    "native": False, "connector": {"id": connector.id, "status": status},
+                    "connector": {"id": connector.id, "status": status, "sample": connector.run_mode == "replay"},
                     "in_library": False, "library_spec_id": None,
                 }
             )  # fmt: skip
@@ -378,6 +401,65 @@ def library(st: State_) -> list[dict[str, Any]]:
 # --- connectors ---------------------------------------------------------------------------
 
 
+class NewApp(BaseModel):
+    app: str
+    owner: str | None = None
+    annual_cost: float | None = None
+    seats: int | None = None
+    renewal_date: date | None = None
+
+
+def _add_to_inventory(
+    s: Session,
+    tenant: str,
+    app_name: str,
+    owner: str | None,
+    annual_cost: float | None,
+    seats: int | None,
+    renewal_date: date | None,
+) -> None:
+    """Add an app the spend data doesn't have yet, with the same details every inventory app has."""
+    app_name, owner = app_name.strip(), (owner or "").strip()
+    if not app_name or len(app_name) > 100:
+        raise HTTPException(422, "Give the app's name (up to 100 characters)")
+    # Chained comparisons are False for NaN, so NaN and infinity are refused too.
+    if (
+        not owner
+        or len(owner) > 100
+        or annual_cost is None
+        or not 0 <= annual_cost <= 1e9
+        or seats is None
+        or not 1 <= seats <= 1_000_000
+        or renewal_date is None
+    ):
+        raise HTTPException(
+            422, "Give the owner, the annual spend, the number of seats (at least 1) and the renewal date"
+        )
+    if renewal_date < date.today():
+        raise HTTPException(422, "The renewal date has passed. Give the next one.")
+    same = s.scalar(
+        select(InventoryApp).where(InventoryApp.tenant_id == tenant, func.lower(InventoryApp.app) == app_name.lower())
+    )
+    if same is not None:
+        raise HTTPException(
+            409, f"{same.app} is already in your inventory. Open its row to connect it or see its users."
+        )
+    s.add(
+        InventoryApp(
+            tenant_id=tenant, app=app_name, owner=owner, annual_cost=annual_cost, seats=seats, renewal_date=renewal_date,
+        )
+    )  # fmt: skip
+
+
+@app.post("/api/inventory")
+def add_inventory_app(body: NewApp, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    """The drawer's Save app: into the inventory, without building a connector yet."""
+    with st.db.session() as s:
+        _add_to_inventory(s, tenant, body.app, body.owner, body.annual_cost, body.seats, body.renewal_date)
+        s.commit()
+    return {"app": body.app.strip()}
+
+
 @app.post("/api/connectors")
 async def create_connector(
     tenant: Tenant_,
@@ -386,12 +468,27 @@ async def create_connector(
     docs_url: Annotated[str | None, Form()] = None,
     from_library_spec_id: Annotated[int | None, Form()] = None,
     openapi_file: Annotated[UploadFile | None, File()] = None,
+    owner: Annotated[str | None, Form()] = None,
+    annual_cost: Annotated[float | None, Form()] = None,
+    seats: Annotated[int | None, Form()] = None,
+    renewal_date: Annotated[date | None, Form()] = None,
 ) -> dict[str, Any]:
     openapi = await openapi_file.read() if openapi_file is not None else None
+    app_name, docs_url = app_name.strip(), (docs_url or "").strip()
+    if not app_name or len(app_name) > 100:
+        raise HTTPException(422, "Give the app's name (up to 100 characters)")
+    parts = urlsplit(docs_url)
+    if docs_url and (parts.scheme not in ("http", "https") or not parts.hostname or any(c.isspace() for c in docs_url)):
+        raise HTTPException(422, PLAIN["BAD_LINK"])
+    if from_library_spec_id is None and not docs_url and openapi is None:
+        raise HTTPException(400, "Paste the app's API docs link or upload its OpenAPI file")
+    adding = any(v is not None for v in (owner, annual_cost, seats, renewal_date))  # "Add an app"
     with st.db.session() as s:
         t = s.get(Tenant, tenant)
+        if adding:
+            _add_to_inventory(s, tenant, app_name, owner, annual_cost, seats, renewal_date)
         connector = Connector(
-            tenant_id=tenant, app=app_name, status="draft", docs_url=docs_url,
+            tenant_id=tenant, app=app_name, status="draft", docs_url=docs_url or None,
             run_mode=_run_mode_for(t, app_name), variables={},
         )  # fmt: skip
         s.add(connector)
@@ -415,9 +512,7 @@ async def create_connector(
             _emit(st, connector_id, {"stage": "done", "status": "ok"})
             return {"id": connector_id}
         s.commit()
-    if not docs_url and openapi is None:
-        raise HTTPException(400, "Paste the app's API docs link or upload its OpenAPI file")
-    _start_draft(st, connector_id, app_name, docs_url or "", openapi, None)
+    _start_draft(st, connector_id, app_name, docs_url, openapi, None)
     return {"id": connector_id}
 
 
@@ -442,7 +537,9 @@ def _emit(st: State, connector_id: int, event: dict[str, Any]) -> None:
                 select(JobEvent.seq).where(JobEvent.connector_id == connector_id).order_by(JobEvent.seq.desc()).limit(1)
             )
             seq = 0 if last is None else last + 1
-            s.add(JobEvent(connector_id=connector_id, seq=seq, data={**event, "seq": seq}))
+            # "at": the screens show how long each step took.
+            data = {**event, "seq": seq, "at": datetime.now(UTC).isoformat()}
+            s.add(JobEvent(connector_id=connector_id, seq=seq, data=data))
             try:
                 s.commit()
                 return
@@ -496,6 +593,7 @@ def _run_job(st: State, connector_id: int, kind: str) -> None:
         elif kind == "test":
             _run_test(st, connector_id, args)
     except Exception as error:  # noqa: BLE001 - a job must always end with a "done" event
+        print(f"JOB_FAILED {kind} connector={connector_id}: {type(error).__name__}: {str(error)[:300]}")
         _fail(st, connector_id, "SERVER_ERROR", type(error).__name__)
     finally:
         with st.db.session() as s:
@@ -553,6 +651,10 @@ def _run_draft(st: State, connector_id: int, args: dict[str, Any]) -> None:
     try:
         outcome = pipe.draft(app_name, docs_url, openapi, hint, bundle)
     except PipelineError as error:
+        with st.db.session() as s:  # a stopped build's AI calls still count in its cost
+            for call in error.calls:
+                s.add(LlmCall(connector_id=connector_id, **call.__dict__))
+            s.commit()
         _fail(st, connector_id, error.code, error.message)
         return
     except Exception as error:  # noqa: BLE001
@@ -660,6 +762,8 @@ def connector_detail(connector_id: int, tenant: Tenant_, st: State_) -> dict[str
                 .order_by(ConnectorVersion.version)
             )
         )
+        # A repaired version keeps the AI draft's evidence report: the repair changed a few paths, not the proof.
+        report = next((v.evidence_report for v in reversed(versions) if v.evidence_report), None)
         return {
             "id": c.id,
             "app": c.app,
@@ -677,15 +781,15 @@ def connector_detail(connector_id: int, tenant: Tenant_, st: State_) -> dict[str
             "has_credentials": s.scalar(select(Credential).where(Credential.connector_id == c.id)) is not None,
             "variables": c.variables,
             "summary": _summary(spec) if spec else None,
-            "evidence": _evidence(spec, version.evidence_report if version else None) if spec else [],
+            "evidence": _evidence(spec, report) if spec else [],
             "conflicts": (spec or {}).get("conflicts", []),
             "warnings": (spec or {}).get("warnings", []),
             "version": version.version if version else None,
             "versions": [
-                {"version": v.version, "created_by": v.created_by, "created_at": v.created_at.isoformat()}
+                {"version": v.version, "created_by": v.created_by, "created_at": _utc_iso(v.created_at)}
                 for v in versions
             ],
-            "evidence_pct": (version.evidence_report or {}).get("pct") if version else None,
+            "evidence_pct": (report or {}).get("pct"),
             "last_run": _run_view(run, spec) if run else None,
             "library": {"status": submitted.status, "id": submitted.id} if submitted else None,
             "confirm_note": c.confirm_note,
@@ -781,8 +885,12 @@ def hint(connector_id: int, body: Hint, tenant: Tenant_, st: State_) -> dict[str
         names = [u.name or "" for u in s.scalars(select(AppUser).where(AppUser.tenant_id == tenant))]
         secrets = list(_secrets(s, st, c).values())
         app_name, docs_url = c.app, c.docs_url or ""
-    scrubbed = scrub_hint(body.text, secrets, names)
-    _start_draft(st, connector_id, app_name, docs_url, None, scrubbed)
+        # An uploaded OpenAPI file is drafted from again; it is kept with the last draft job.
+        previous = (c.job_args or {}).get("openapi") if c.job_kind == "draft" else None
+    scrubbed = scrub_hint(body.text, secrets, names)  # empty: "Try again" with the same docs and no hint
+    _start_draft(
+        st, connector_id, app_name, docs_url, base64.b64decode(previous) if previous else None, scrubbed or None
+    )
     return {"scrubbed_hint": scrubbed}
 
 
@@ -797,7 +905,9 @@ def credentials(connector_id: int, body: Credentials, tenant: Tenant_, st: State
     """Write-only: secrets are sealed in the vault and never returned or logged."""
     with st.db.session() as s:
         c = _connector(s, tenant, connector_id)
-        sealed = st.vault.seal(tenant, connector_id, {k: v for k, v in body.secrets.items() if v})
+        # A field left empty keeps the value saved before ("Run the test again" sends no token).
+        kept = _secrets(s, st, c)
+        sealed = st.vault.seal(tenant, connector_id, {**kept, **{k: v for k, v in body.secrets.items() if v}})
         s.execute(delete(Credential).where(Credential.connector_id == connector_id))
         s.add(
             Credential(
@@ -825,6 +935,8 @@ class TestRequest(BaseModel):
 def test(connector_id: int, body: TestRequest, tenant: Tenant_, st: State_) -> dict[str, Any]:
     with st.db.session() as s:
         c = _connector(s, tenant, connector_id)
+        if c.job_kind == "test" and c.job_state in ("queued", "running"):
+            return {"run_id": (c.job_args or {})["run_id"]}  # a second click joins the test already running
         version = _latest(s, connector_id)
         if version is None:
             raise HTTPException(409, "Nothing to test yet")
@@ -896,7 +1008,10 @@ def _run_test(st: State, connector_id: int, args: dict[str, Any]) -> None:
                 status=summary.get("status", "error") if summary.get("status") in ("ok", "partial", "error") else "error",
                 exit_code=result.exit_code, error_code=summary.get("error_code"),
                 usage_error_code=summary.get("usage_error_code"),
-                summary={**summary.get("summary", {}), "repairs": outcome.repairs, "isolation": result.isolation_note},
+                summary={
+                    **summary.get("summary", {}), "repairs": outcome.repairs, "isolation": result.isolation_note,
+                    "detail": summary.get("error_detail"),
+                },
                 repair_try=len(outcome.repairs), started_at=started, finished_at=datetime.now(UTC), lines=kept,
             )
         )  # fmt: skip
@@ -909,7 +1024,7 @@ def _run_test(st: State, connector_id: int, args: dict[str, Any]) -> None:
             c.usage_available = any(r.get("usage_available") for r in result.records)
         else:
             code = summary.get("error_code") or "SERVER_ERROR"
-            c.error_code, c.error_message = code, summary.get("error_code")
+            c.error_code, c.error_message = code, summary.get("error_detail") or code
             c.status = "needs_help" if result.exit_code in (4, 6, 8) else "testing"
             if result.exit_code == 8:
                 s.add(
@@ -920,6 +1035,34 @@ def _run_test(st: State, connector_id: int, args: dict[str, Any]) -> None:
                 )  # fmt: skip
         s.commit()
     emit({"stage": "done", "status": "ok" if result.exit_code == 0 else "fail", "run_id": run_id})
+
+
+def _prebuild_samples(st: State) -> None:
+    """Acme's sample apps: each hand-written spec is turned into code and tested on its recorded answers by the
+    same steps as any connector, so the users on the app page were pulled by the generated code."""
+    for app_name in SAMPLE_APPS:
+        spec = json.loads((EXAMPLES / f"{slug_for(app_name)}.json").read_text())
+        with st.db.session() as s:
+            c = Connector(
+                tenant_id="acme", app=app_name, status="testing", tier=spec["app"]["tier"], run_mode="replay",
+                docs_url=spec["app"]["docs_url"], variables={}, ai_source="Hand-written spec",
+            )  # fmt: skip
+            s.add(c)
+            s.flush()
+            s.add(ConnectorVersion(connector_id=c.id, version=1, spec_json=spec, created_by="hand_written"))
+            s.commit()
+            connector_id = c.id
+        try:
+            _run_test(st, connector_id, {"run_id": str(uuid.uuid4()), "run_mode": "replay", "tenant": "acme"})
+        except Exception:  # noqa: BLE001 - one app failing must not stop the others
+            traceback.print_exc()
+            continue
+        with st.db.session() as s:
+            tested = s.get(Connector, connector_id)
+            run = s.get(Run, tested.last_run_id) if tested and tested.last_run_id else None
+            if tested is not None and run is not None and run.exit_code == 0:  # same rule as going live by hand
+                tested.status = "live" if tested.usage_available and run.status != "partial" else "live_users_only"
+                s.commit()
 
 
 def _app_user(tenant: str, connector_id: int, record: dict[str, Any]) -> AppUser:
@@ -941,6 +1084,11 @@ def run_detail(run_id: str, tenant: Tenant_, st: State_) -> dict[str, Any]:
         return _run_view(run, version.spec_json if version else None, full=True)
 
 
+def _utc_iso(moment: datetime) -> str:
+    """SQLite gives the time back without its zone; without "+00:00" a browser reads UTC as local time."""
+    return (moment if moment.tzinfo else moment.replace(tzinfo=UTC)).isoformat()
+
+
 def _run_view(run: Run, spec: dict[str, Any] | None, full: bool = False) -> dict[str, Any]:
     lines = run.lines or []
     checklist: dict[str, str] = {}
@@ -953,13 +1101,13 @@ def _run_view(run: Run, spec: dict[str, Any] | None, full: bool = False) -> dict
         "exit_code": run.exit_code,
         "error_code": run.error_code,
         "usage_error_code": run.usage_error_code,
-        "message": _message(run.error_code, spec),
+        "message": _message(run.error_code, spec, (run.summary or {}).get("detail") or ""),
         "usage_message": _message(run.usage_error_code, spec),
         "summary": run.summary,
         "checklist": checklist,
         "sandbox": run.sandbox,
         "run_mode": run.run_mode,
-        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "finished_at": _utc_iso(run.finished_at) if run.finished_at else None,
     }
     if full:
         view["logs"] = [line for line in lines if line.get("type") == "log"]
@@ -1001,23 +1149,24 @@ def savings_preview(connector_id: int, tenant: Tenant_, st: State_) -> dict[str,
             f.kind: f.content for f in s.scalars(select(CrosscheckFile).where(CrosscheckFile.tenant_id == c.tenant_id))
         }
         users = [_user_dict(u) for u in s.scalars(select(AppUser).where(AppUser.connector_id == connector_id))]
+        # The inventory's seats, spend and renewal (what the admin typed in Add an app, or the spend data) come
+        # first, so the app page and the savings agree; the contract file only fills in an app it lacks.
         contract = files.get("contract")
-        if contract is None:
-            item = s.scalar(
-                select(InventoryApp).where(InventoryApp.tenant_id == c.tenant_id, InventoryApp.app == c.app)
-            )
-            if item is not None and item.seats:
-                contract = json.dumps(
-                    [{"app": c.app, "seats": item.seats, "annual_cost": item.annual_cost,
-                      "renewal_date": item.renewal_date.isoformat() if item.renewal_date else None}]
-                )  # fmt: skip
+        item = s.scalar(select(InventoryApp).where(InventoryApp.tenant_id == c.tenant_id, InventoryApp.app == c.app))
+        from_inventory = item is not None and bool(item.seats)
+        if item is not None and from_inventory:
+            contract = json.dumps(
+                [{"app": c.app, "seats": item.seats, "annual_cost": item.annual_cost,
+                  "renewal_date": item.renewal_date.isoformat() if item.renewal_date else None}]
+            )  # fmt: skip
         parsed = savings.parse_files(c.app, files.get("hris"), files.get("sso"), contract)
+        # Activity is judged on the sample data's own date; days to renewal count from the real date.
         today = datetime(2026, 10, 29, 9, tzinfo=UTC) if c.run_mode == "replay" else datetime.now(UTC)
         result = savings.compute(c.app, users, version.spec_json, parsed, c.token_owner_email, today)
         out = result.to_dict()
-        out["contract_source"] = (
-            "contract.json" if files.get("contract") and contract_for(contract or "", c.app) else "inventory"
-        )
+        if out["renewal_date"]:
+            out["days_to_renewal"] = (date.fromisoformat(out["renewal_date"]) - datetime.now(UTC).date()).days
+        out["contract_source"] = "your inventory" if from_inventory else "contract.json"
         out["run_mode"] = c.run_mode
         out["token_owner_warning"] = _token_owner_warning(s, c)
         return out
@@ -1026,11 +1175,24 @@ def savings_preview(connector_id: int, tenant: Tenant_, st: State_) -> dict[str,
 def _user_dict(u: AppUser) -> dict[str, Any]:
     return {
         "external_id": u.external_id, "email": u.email, "name": u.name, "role": u.role, "status": u.status,
-        "is_admin": u.is_admin, "is_billable": u.is_billable,
+        "is_admin": u.is_admin, "is_billable": u.is_billable, "license_type": u.license_type,
         "last_active_at": u.last_active_at.replace(tzinfo=UTC).isoformat() if u.last_active_at else None,
-        "usage_metric_value": u.usage_metric_value, "usage_available": u.usage_available,
+        "usage_metric_value": u.usage_metric_value, "usage_metric_label": u.usage_metric_label,
+        "usage_window_days": u.usage_window_days, "usage_available": u.usage_available,
         "usage_is_proxy": u.usage_is_proxy, "excluded_reason": u.excluded_reason,
     }  # fmt: skip
+
+
+@app.get("/api/connectors/{connector_id}/users")
+def connector_users(connector_id: int, tenant: Tenant_, st: State_) -> dict[str, Any]:
+    """The users and usage the generated connector retrieved on its last good run (the app page's Users tab)."""
+    with st.db.session() as s:
+        c = _connector(s, tenant, connector_id)
+        users = s.scalars(
+            select(AppUser).where(AppUser.connector_id == connector_id).order_by(AppUser.name, AppUser.email)
+        )
+        as_of = datetime(2026, 10, 29, 9, tzinfo=UTC) if c.run_mode == "replay" else datetime.now(UTC)
+        return {"as_of": as_of.isoformat(), "sample": c.run_mode == "replay", "users": [_user_dict(u) for u in users]}
 
 
 class Confirm(BaseModel):

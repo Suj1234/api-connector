@@ -63,11 +63,14 @@ class GeminiClient:
     def generate_json(self, *, model: str, system: str, prompt: str, schema: dict[str, Any]) -> LLMResult:
         from google.genai import types
 
+        # Filling a form from quoted docs needs little reasoning; uncapped thinking made each call 30-70 s.
+        level = get("LLM_THINKING_LEVEL", "low")  # minimal | low | medium | high; empty: the model's default
         config = types.GenerateContentConfig(
             system_instruction=system,
             response_mime_type="application/json",
             response_json_schema=schema,
             temperature=0.1,
+            thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel(level.upper())) if level else None,
         )
         start = time.monotonic()
         try:

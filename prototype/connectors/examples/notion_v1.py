@@ -37,6 +37,7 @@ META: dict[str, Any] = {
     "tier": "T3",
     "usage_definition": {"metric_label": None, "active_rule": None, "proxy": False, "fallback": "sso_last_login"},
     "has_usage_stream": False,
+    "counts_usage": False,
     "has_last_active": False,
     "join_on": None,
     "window_days": None,
@@ -92,7 +93,8 @@ class Client:
             raise ConnectorError("MAPPING_FAILED", detail=f"login value {name!r} not found")
         self.vars[name] = str(value)
 
-    # 4. Error handling: retry, backoff and plain error codes. 6. Logging: one line per request.
+    # 4. Error handling: retry, backoff and plain error codes.
+    # 6. Logging: one line per request (step, method, path, status, time); never a token or a body.
     def request(self, step: str, path_or_url: str, params: list[tuple[str, str]] | None = None) -> httpx.Response:
         rate_limited = 0
         server_errors = 0

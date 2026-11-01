@@ -42,6 +42,7 @@ META: dict[str, Any] = {
         "fallback": None,
     },
     "has_usage_stream": False,
+    "counts_usage": False,
     "has_last_active": True,
     "join_on": None,
     "window_days": None,
@@ -143,7 +144,8 @@ class Client:
         self.log.add_secret(token)
         return token
 
-    # 4. Error handling: retry, backoff and plain error codes. 6. Logging: one line per request.
+    # 4. Error handling: retry, backoff and plain error codes.
+    # 6. Logging: one line per request (step, method, path, status, time); never a token or a body.
     def request(self, step: str, path_or_url: str, params: list[tuple[str, str]] | None = None) -> httpx.Response:
         rate_limited = 0
         server_errors = 0

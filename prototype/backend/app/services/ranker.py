@@ -61,7 +61,9 @@ def score(text: str) -> float:
 
 def openapi_chunks(spec: dict[str, Any]) -> list[Chunk]:
     chunks: list[Chunk] = []
-    head: dict[str, Any] = {k: spec[k] for k in ("servers", "host", "basePath", "schemes", "security") if k in spec}
+    # info.description often states the auth and the rate limit.
+    keys = ("info", "servers", "host", "basePath", "schemes", "security")
+    head: dict[str, Any] = {k: spec[k] for k in keys if k in spec}
     components = spec.get("components", {})
     if "securitySchemes" in components:
         head["components/securitySchemes"] = components["securitySchemes"]

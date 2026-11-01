@@ -41,25 +41,28 @@ Open http://localhost:8000. Switch tenants top left:
 | Globex · Live | The real vendor APIs, with your own tokens | Proving the code works on a real account |
 | Platform team | — | Library review queue (approve before any other tenant sees a connector) |
 
-To start again from a clean slate, stop the server and delete `data/app.db`.
+To start again from a clean slate, stop the server and delete `data/app.db`. The next start builds the three sample apps (Zendesk, Notion, Slack) in the background, in about a minute; `SAMPLE_APPS=0` turns that off.
 
 ## The 5-minute demo (PRD §15)
 
-1. Acme → App inventory → Calendly → **Connect usage data** → **Build with AI** (docs link is pre-filled).
-2. **What we found**: open **View evidence** and show the quotes and the rate-limit conflict chip.
-3. **Looks right** → **Run test** → open **Generated code** (the six items are highlighted).
-4. **See the savings** → **Go live** → **Submit to library**.
-5. Switch to **Platform team** → open Calendly → **Approve to library**.
-6. Switch to **Globex** → Calendly shows **In library** → paste Globex's own token → its own test runs.
-7. Surprise app: back in Acme, build any app from its public docs.
+1. **App inventory**: Zendesk, Notion and Slack are connected on sample data; open Slack's page to show the users.
+2. **+ Add an app**: Calendly, Marketing Ops, $14,400, 60 seats, renews 26 Dec 2026, docs link `https://developer.calendly.com/api-docs` → **Build with AI** (about 1.5 minutes with live Gemini).
+3. **Review what we found**: click a **Proved** badge to show its quote.
+4. **Looks right** → **Run test** → the **Generated code** tab (the six items are highlighted) → **Continue**.
+5. **Check the savings** → **Go live** → Calendly's page with its 48 users.
+6. Surprise app: **+ Add an app** with any app's public docs.
 
-Backup: the same flow, clicked by a script, recorded as a video:
+The tenant switcher, the library and the platform review steps are built but hidden for now (PRD §15).
+
+Screenshots of every screen, and a check that the whole flow works: a script clicks through the same steps and stops at the first one that breaks.
 
 ```bash
-npm i -g playwright && npx playwright install chromium
-rm -f data/app.db   # then restart the server
-RECORD_VIDEO=1 NODE_PATH=$(npm root -g) node scripts/demo-walkthrough.mjs   # → data/demo-video/
+npm i -g playwright   # it uses your installed Google Chrome if Playwright's own browser isn't downloaded
+rm -f data/app.db     # then restart the server: the script needs a fresh database (no Calendly yet)
+NODE_PATH=$(npm root -g) node scripts/demo-walkthrough.mjs   # → data/demo-shots/
 ```
+
+When the app asks to log in, add `DEMO_USERNAME=… DEMO_PASSWORD=…` in front of the last command.
 
 ## Tests
 
@@ -87,7 +90,7 @@ backend/app/        API (api.py), models, services: spec_validator, codegen (+ t
 backend/runtime/    what generated connectors import: transports, helpers, logging, errors
 backend/runner/     the sandbox entry point (TRD §6)
 connectors/examples generated code for the three example specs (read these)
-specs/examples/     hand-written golden specs (Zendesk, Calendly, Notion)
+specs/examples/     hand-written golden specs (Zendesk, Calendly, Notion, and the Slack sample)
 schemas/            the connector spec schema and the flattened schema the AI fills
 fixtures/           fake Acme data, replay recordings, docs fixtures for tests
 docker/             runner and egress-proxy images

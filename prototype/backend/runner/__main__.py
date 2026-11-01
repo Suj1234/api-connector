@@ -85,7 +85,9 @@ def run(
         state.warnings += client.warnings
     except ConnectorError as error:
         state.status = "error"
-        state.error_code = error.code
+        state.error_code, state.error_detail = error.code, error.detail
+        if error.code == "AUTH_REJECTED":  # a bearer token is only "signed in" once a call accepts it
+            log.progress("login", "fail", error.code)
         if client is not None:
             state.pages = client.pages
             if error.code in REPAIRABLE_CODES and client.last_shape is not None:
@@ -107,6 +109,7 @@ class _RunState:
         self.mode = mode
         self.status = "ok"
         self.error_code: str | None = None
+        self.error_detail: str | None = None  # our own words about the spec or the inputs; never a value from the app
         self.usage_error_code: str | None = None
         self.usage_ran = False
         self.users = 0
@@ -141,7 +144,7 @@ def _make_client(
     else:
         missing = [name for name in module.AUTH_FIELDS if not secrets.get(name)]
         if missing:
-            raise ConnectorError("BAD_INPUT", detail=f"missing credentials: {', '.join(missing)}")
+            raise ConnectorError("BAD_INPUT", detail=f"{' and '.join(missing)} not given")
         inner = live_transport or _network_transport()
         now = h.utc_now()
         sleep = time.sleep
@@ -204,6 +207,9 @@ def _usage(
     log.progress("usage", "start")
     try:
         usage: dict[str, dict[str, Any]] = module.get_usage(client, users)
+        join = module.META["join_on"]
+        if usage and not any(_join_key(u, join) in usage for u in users):
+            raise ConnectorError("MAPPING_FAILED", detail=f"usage records don't match any user by {join}")
     except ConnectorError as error:
         log.progress("usage", "fail", error.code)
         if error.code not in PARTIAL_OK_USAGE_CODES:
@@ -215,6 +221,11 @@ def _usage(
     state.usage_ran = True
     log.progress("usage", "ok", f"{len(usage)} users with activity")
     return usage
+
+
+def _join_key(user: dict[str, Any], join_on: str) -> str:
+    key = user.get(join_on)
+    return str(key.lower() if join_on == "email" and isinstance(key, str) else key)
 
 
 def _canonical(
@@ -240,10 +251,9 @@ def _canonical(
     for row in users:
         data = {k: v for k, v in row.items() if v is not None}
         if meta["has_usage_stream"] and state.usage_ran:
-            key = row.get(meta["join_on"])
-            key = key.lower() if meta["join_on"] == "email" and isinstance(key, str) else key
-            values = usage.get(str(key), {})
-            data["usage_metric_value"] = values.get("usage_metric_value", 0)
+            values = usage.get(_join_key(row, meta["join_on"]), {})
+            if meta.get("counts_usage", True):  # code generated before the flag counted
+                data["usage_metric_value"] = values.get("usage_metric_value", 0)
             if values.get("last_active_at"):
                 data["last_active_at"] = values["last_active_at"]
             data["usage_window_days"] = meta["window_days"]
@@ -270,6 +280,7 @@ def _result(emit: Emit, state: _RunState) -> None:
             "type": "result",
             "status": state.status,
             "error_code": state.error_code,
+            "error_detail": state.error_detail,
             "usage_error_code": state.usage_error_code,
             "summary": {
                 "users": state.users,

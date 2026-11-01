@@ -28,9 +28,9 @@ Section references like "PRD §6.3" point to the PRD. Plain "§3" points to this
 - **Surprise app:** the builder runs end to end on one app with no example spec. Chosen at build time: not listed on the platform's public integrations page; a REST + JSON API with a users endpoint; a free or trial account available.
 - **Generated Python connector** covering all six items: client, auth, users + usage, error handling, paging, logging.
 - **Sandboxed test run** (all users, sampled usage), a self-repair loop (max 3), and plain error messages.
-- **UI:** screens F1–F7 (F7 without the versions diff), plus a simple **F8** with the library review queue.
-- **Two tenants** (Acme, Globex) with a tenant switcher, and an **internal** view for the platform team. **Library flow:** submit from Acme → approve in F8 → Globex connects with its own token, and its own test runs.
-- **Run modes:** `live` (real vendor API) and `replay` (recorded responses, fake people, labelled "Sample data" on every screen).
+- **UI:** screens F1–F7 (F7 without the versions diff) and the **F9 app page**, which lists the users and usage the generated connector retrieved. Every screen is built from the dashboard design reference's parts (`DESIGN.md`). **Add an app** asks for the owner, annual spend, seats and renewal date, so a new app joins the inventory like any other. A simple **F8** with the library review queue is built but hidden for now.
+- **Two tenants** (Acme, Globex) and an **internal** view for the platform team, with the **library flow**: submit from Acme → approve in F8 → Globex connects with its own token, and its own test runs. All built in the engine; the screens show one company (Acme) for now, with the tenant switcher, library and internal view hidden (`PRD.md` §15).
+- **Run modes:** `live` (real vendor API) and `replay` (recorded responses, fake people, labelled "Sample data" wherever sample numbers show).
 - **Savings preview** using the fixture files (§11).
 - **Encrypted secrets**, one key per tenant. Secrets never in logs or prompts.
 - **Security tests:** a prompt-injection doc, a call to another host, a non-read call, SSRF on the docs fetcher, a grep for secrets.
@@ -65,7 +65,7 @@ Section references like "PRD §6.3" point to the PRD. Plain "§3" points to this
 |---|---|
 | Backend | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy, **SQLite** for the prototype (Postgres later) |
 | HTTP | `httpx` with a custom transport that only allows the spec's host (`AllowOnlyHost`). In replay mode, an `httpx.MockTransport` serves recorded responses from `fixtures/replay/<app>/` |
-| Docs fetching | `httpx` + `trafilatura` (HTML → text). **Playwright** headless Chromium when the page is rendered by JavaScript (empty text after a normal fetch). If both fail → `DOCS_UNREADABLE` |
+| Docs fetching | `httpx` + `trafilatura` (HTML → text), or the page's `<article>` text when that holds more (trafilatura drops tables built from `<div>`s, such as Calendly's rate limits). **Playwright** headless Chromium when the page is rendered by JavaScript (empty text after a normal fetch). If both fail → `DOCS_UNREADABLE` |
 | OpenAPI | Found or uploaded → parse it and send only the relevant paths to the LLM |
 | LLM | **Google Gen AI SDK** (`google-genai`) behind `LLMClient`. JSON-Schema-constrained output (`mime_type: application/json` + schema). Send the LLM a **flattened draft schema** (very large or deeply nested schemas can return 400), then convert to the full spec and validate it locally with `jsonschema` |
 | Code generation | Jinja2 → Python module; must pass `ruff` and `mypy --strict` |
@@ -81,7 +81,9 @@ LLM_PROVIDER=gemini
 LLM_MODEL_DRAFT=gemini-3.8-flash
 LLM_MODEL_ESCALATE=gemini-4-argon
 LLM_INPUT_TOKEN_BUDGET=60000
+LLM_THINKING_LEVEL=low        # minimal | low | medium | high; empty = the model's default (uncapped)
 DOCS_MAX_PAGES=60
+SAMPLE_APPS=1                 # 1: a fresh database gets Zendesk, Notion and Slack connected on sample data
 VAULT_KEY=                    # 32 random bytes, base64
 DATABASE_URL=sqlite:///./data/app.db
 SANDBOX_MODE=docker           # docker | subprocess
@@ -158,8 +160,12 @@ Do not set `GOOGLE_API_KEY`. If it is set, the SDK uses it instead of `GEMINI_AP
 - **Methods:** `GET` for streams and bootstrap; `POST` only to `token_url`.
 - **Host:** every runtime URL must resolve to exactly `api_host_pattern` after variables are filled in. https only; no IP literals; variables must match their `pattern`. The docs host doesn't matter (docs can live on stoplight.io or readme.io).
 - **No secrets in URLs:** no `{secrets.*}` in `path`, `query` or `base_url`.
+- **One pair of braces per placeholder:** a nested or broken one (`{org_uriObject_or_URI:{org_uri}}`) is rejected, not filled from its inner part.
 
-**Evidence check (P4):** normalise both texts (lower-case, collapse whitespace, strip markdown), then require `rapidfuzz.fuzz.partial_ratio ≥ 90` between the quote and the fetched page text. Or check that the OpenAPI pointer exists in the file.
+**Evidence check (P4):** normalise both texts (lower-case, collapse whitespace, strip markdown), then require `rapidfuzz.fuzz.partial_ratio ≥ 90` between the quote and the fetched page text. Or check that the OpenAPI pointer exists in the file. For the fields that say where we call and how fast, the quote being on the page is not enough:
+- `base_url`: its host must appear on the cited page (or at the pointer);
+- every `path` and `token_url`: each fixed part of the path must appear there as a whole word;
+- `rate_limit.requests_per_minute`: the quote must give that number (or the same limit per second or per hour).
 
 The full JSON Schema goes in `schemas/connector_spec.schema.json` and must match this section exactly. The three specs in §4 MUST validate against it.
 
@@ -354,6 +360,14 @@ Zendesk API tokens can't be created any more (since 27 Oct 2026), so this spec u
 }
 ```
 
+### Slack (T2, sample data only)
+
+`specs/examples/slack.json`, hand-written for the sample app (no live Slack account). Bearer user token (`xoxp-`) with `users:read`, `users:read.email` and `admin`, from a Workspace Owner or Admin; paid plan for the access logs.
+
+- **Users:** `GET https://slack.com/api/users.list?limit=200`, cursor `response_metadata.next_cursor`. `records_path` drops bots and Slackbot: ``members[?is_bot == `false` && id != 'USLACKBOT']``. Role from the owner, admin and guest flags (Primary owner, Owner, Admin, Multi-channel guest, Single-channel guest, Member); `deleted` → deactivated; `is_billable` = not deleted and not a single-channel guest.
+- **Usage:** `GET /team.accessLogs?limit=999`, cursor; `aggregate`: one row per user, IP and device, `user_key_path` `user_id`, `time_path` `date_last` (Unix seconds), `max_time` → last sign-in, 90-day window. Label "Last sign-in".
+- **Warnings:** errors come back as HTTP 200 with `ok: false` (e.g. `paid_only`); Slack's Fair Billing Policy already credits members inactive for more than 28 days.
+
 ## 5. Canonical user record (every connector outputs this)
 
 | Field | Type | Notes |
@@ -458,17 +472,21 @@ Needs help → the admin adds a hint → back to Draft (re-draft) → Testing.
 | `RULES_REJECTED` | "This draft asked for something we never allow (for example a write or delete call). We discarded it." |
 | `DOCS_UNREADABLE` | "We couldn't read these docs. Upload the app's OpenAPI file or try another docs link." |
 | `SSRF_BLOCKED` | "That link points to a private or internal address. Use the app's public docs link." |
+| `DOCS_WRONG_APP` | "These docs never mention <app>. Check that the link is <app>'s API docs, or upload its OpenAPI file." |
+| `DOCS_NOT_API` | "These pages don't look like an API reference: only <n of m> answers could be proved from them. Use the link to the app's API reference, or upload its OpenAPI file." |
+| `BAD_INPUT` | "Some connection details are missing or wrong (<the field's label> not given). Add them under Connect, then test again." |
+| `NO_USERS_API` | "<app>'s API doesn't list your company's users: the only user endpoint in these docs returns just the token's own account. Look in its docs for an admin or members endpoint, or keep using SSO data for <app>." |
 
 ## 8. AI pipeline
 
 | Step | LLM? | What |
 |---|---|---|
-| P1 Fetch | No | **SSRF guard first:** http(s) only; resolve DNS and block private, loopback, link-local and metadata IPs; check again after every redirect. Then crawl the docs host (max `DOCS_MAX_PAGES`, 3 levels, robots.txt). **OpenAPI discovery:** links ending `.json`/`.yaml`/`.yml` that mention openapi/swagger; common paths (`/openapi.json`, `/swagger.json`); Stoplight/ReadMe export links; or the uploaded file |
+| P1 Fetch | No | **SSRF guard first:** http(s) only; resolve DNS and block private, loopback, link-local and metadata IPs; check again after every redirect. Then crawl the docs host (max `DOCS_MAX_PAGES`, 3 levels, robots.txt), most relevant pages first, **8 at a time** (the time is network waiting: 60 Calendly pages took 2 min one by one, 26 s in parallel). **OpenAPI discovery:** links ending `.json`/`.yaml`/`.yml` that mention openapi/swagger; common paths (`/openapi.json`, `/swagger.json`); Stoplight/ReadMe export links; or the uploaded file. **A file with no link is read on its own** (no link to check, nothing to crawl). **Wrong docs stop here:** when no page, title, URL or OpenAPI `info`/`servers` names the app (a word of its name, 3+ letters) → `DOCS_WRONG_APP` |
 | P2 Rank | No | Keyword score (users, members, seats, license, activity, audit, login, auth, token, scope, pagination, rate limit). Always include the auth, paging and rate-limit pages. Fit `LLM_INPUT_TOKEN_BUDGET` |
-| P3 Draft | Yes (`LLM_MODEL_DRAFT`) | Output = a spec via schema-constrained JSON (flattened draft schema → full spec) |
-| P4 Evidence | No | Verify every quote/pointer (§3). Drop failing fields and re-ask once (`LLM_MODEL_DRAFT`). Detect conflicts (the same field, different values from different sources) → `conflicts`, resolved by the source ranking in PRD §6.3 |
+| P3 Draft | Yes (`LLM_MODEL_DRAFT`) | Output = a spec via schema-constrained JSON (flattened draft schema → full spec). Thinking is capped at `LLM_THINKING_LEVEL` (default low: 21–31 s a call instead of 30–69 s, same evidence score in our runs). A host written as a regex (`^api\.x\.com$`) or a URL is tidied to the bare host before the rules check judges it. A badly shaped host or an invalid or unknown placeholder gets one fix from the AI; any other rule break (a write call, a secret outside auth) discards the draft |
+| P4 Evidence | No | Verify every quote/pointer (§3). Drop failing fields and re-ask once (`LLM_MODEL_DRAFT`). Fewer than half the fields proved after that → `DOCS_NOT_API` (a help centre or marketing site, not an API reference). Detect conflicts (the same field, different values from different sources) → `conflicts`, resolved by the source ranking in PRD §6.3 |
 | P5 Rules | No | Read-only, exact host, valid placeholders, variable patterns, no secrets in URLs |
-| P6 Codegen | No | Templates → module; `ruff` + `mypy --strict` |
+| P6 Codegen | No | Templates → module; `ruff` + `mypy --strict`. mypy keeps its cache in `data/mypy_cache` (about 35 s the first time, then about 2 s). Long lines are not a ruff error here: a long JMESPath or quote is data, not a code fault |
 | P7 Test | No | Sandbox run per §6 |
 | P8 Repair | Yes | **Only for exit codes 4 and 6.** Input: the spec + error code + a **masked** response sample (keys and types only) + relevant docs. Output: a **JSON Patch (RFC 6902)** limited to `/streams`, `/bootstrap`, the non-secret parts of `/auth`, and `/default_headers`. Tries 1–2 use `LLM_MODEL_DRAFT`; try 3 uses `LLM_MODEL_ESCALATE` |
 
@@ -481,11 +499,19 @@ Needs help → the admin adds a hint → back to Draft (re-draft) → Testing.
 - Prefer T1, then T2, then T3.
 - List plan, role and scope requirements as warnings.
 - If sources conflict, prefer the vendor's API reference and record the conflict.
+- Quotes are copied character for character from one place; every filled field has its own evidence item.
+- `api_host_pattern` is a plain host name, never a regex.
+- Usage labels are plain words with the window ("Events hosted (90 days)"), never snake_case, and say what each person did as `user_key_path` reads it (a host "hosted", never "attended").
+- The only time placeholders are `{now}` and `{now_minus_days:N}`; the prompt says so (without it the AI invented forms like `{start_time_iso8601|90_days_ago_iso8601|}`).
+- `requests_per_minute` is the general limit for the list calls, never a token-request or one-endpoint limit; when it differs by plan, the paid plans' limit, with a warning naming the lower one.
+- After `explode_path` splits a record into items, a time on the record itself is read with the `$parent.` prefix (P3 and P8 both say so; without it no record gets a time).
+
+**Usage mapping guard (runtime).** If usage records come back but none names a user (`user_key_path`), none has a readable time (`time_path`), or none matches a user (`join_on`), the test fails with `MAPPING_FAILED`, which P8 can repair. A connector never passes with every user silently at zero. A usage stream that only gives a last-active time reports no number (not 0). Times may be ISO text or Unix seconds (Slack).
 
 ### 8.1 Admin hint
 
 "This looks wrong" / "Add a hint" sends the admin's plain-text note to P3/P8 as extra context. **Scrub it first:**
-- remove email addresses, URLs with query strings, and digit runs of 6 or more;
+- remove email addresses, URLs with query strings, digit runs of 6 or more, and anything token-like (20+ characters mixing letters and digits, such as a JWT or an `xoxp-` token; a part of a link's path stays);
 - remove any word that matches a stored secret or a user's name;
 - cap it at 500 characters.
 
@@ -501,15 +527,16 @@ Moved to `EVAL.md` §2 (the AI quality eval).
 
 ## 9. Backend API (prototype)
 
-All bodies are JSON unless noted. Every call sends the header `X-Tenant: acme|globex|internal` (no real login in the prototype; `internal` is the platform team's view).
+All bodies are JSON unless noted. Every call sends the header `X-Tenant: acme|globex|internal` (`internal` is the platform team's view). The screens always send `acme` for now. When `DEMO_PASSWORD` is set, a shared demo login (`DEMO_USERNAME` / `DEMO_PASSWORD`) guards every call except login, logout and the session check.
 
 | Method + path | Does |
 |---|---|
-| `GET /api/tenants` | Tenant switcher |
-| `GET /api/inventory` | Apps with spend, seats, renewal date, connector status, library availability |
+| `GET /api/tenants` | Tenant switcher (hidden for now) |
+| `GET /api/inventory` | Apps with owner, spend, seats, renewal date, days to renewal, usage status (`Connected` / `Users only` / `No usage data`), latest connector, library availability |
+| `POST /api/inventory` | **Save app**: `{app, owner, annual_cost, seats, renewal_date}` adds an app to the inventory without building a connector. All five are required (seats ≥ 1, spend 0 to 1e9); a name already in the inventory, in any letter case, is refused with 409 |
 | `GET /api/library` | Approved specs: app, version, used_by (shown only if ≥ 5, else "fewer than 5"), health |
-| `POST /api/connectors` | `{app_name, docs_url?, from_library_spec_id?}`; an OpenAPI file goes via `multipart/form-data` field `openapi_file` |
-| `GET /api/connectors/{id}/events` | SSE: `{"stage":"fetch\|draft\|evidence\|rules\|codegen\|test\|repair","status":"start\|ok\|fail","message":"..."}` |
+| `POST /api/connectors` | `multipart/form-data`: `app_name`, then `docs_url` **or** `openapi_file`, or `from_library_spec_id`. **Add an app** also sends `owner`, `annual_cost`, `seats`, `renewal_date`: the app joins the inventory in the same step, with the same checks as `POST /api/inventory`. A missing docs source is refused before anything is saved |
+| `GET /api/connectors/{id}/events` | SSE: `{"stage":"fetch\|draft\|evidence\|rules\|codegen\|test\|repair","status":"start\|ok\|fail","message":"...","seq":3,"at":"<ISO time>"}`. A stream closes after about 5 minutes (the hosting limit); the screens reconnect and skip the events they already have, until `done` |
 | `GET /api/connectors/{id}` | Status, tier, summary cards, warnings, evidence, conflicts |
 | `POST /api/connectors/{id}/hint` | `{text}` → scrubbed → re-draft/repair |
 | `POST /api/connectors/{id}/credentials` | Write-only: `{secrets, variables, token_owner_email?}` |
@@ -518,6 +545,7 @@ All bodies are JSON unless noted. Every call sends the header `X-Tenant: acme|gl
 | `GET /api/runs/{run_id}` | Test report |
 | `POST /api/crosscheck/upload` | `multipart/form-data`: `hris.csv`, `sso.csv`, `contract.json` for the current tenant |
 | `GET /api/connectors/{id}/savings` | The §11 result for F6 |
+| `GET /api/connectors/{id}/users` | The F9 Users tab: `{as_of, sample, users: [canonical records]}` from the last passing test; `as_of` is the recording date in replay mode |
 | `POST /api/connectors/{id}/confirm` | `{accept: true, users_only?: bool, note?}` → Live. `note` is required when the SSO mismatch is > 2% |
 | `POST /api/connectors/{id}/submit-to-library` | Strips customer values → `pending_review` |
 | `GET /api/library/review-queue` | Internal only: pending specs, with flagged fields (e.g. custom field paths) |
@@ -586,11 +614,16 @@ The join key is the lower-cased email. Users with no email go to "Can't match".
 
   | App | Owner | Spend | Seats | Renewal | Status |
   |---|---|---|---|---|---|
-  | Calendly | Marketing Ops | $14,400 | 60 | 26 Dec 2026 | No usage data |
-  | Zendesk | Support | $38,000 | 40 | 15 Feb 2027 | No usage data |
-  | Notion | IT | $12,000 | 100 | 31 Mar 2027 | No usage data |
-  | Surprise app | — | — | — | — | No usage data |
-  | Slack, Zoom | — | — | — | — | Connected (native) |
+  | Zendesk | Support | $38,000 | 40 | 15 Feb 2027 | Connected (sample data) |
+  | Notion | IT | $12,000 | 100 | 31 Mar 2027 | Users only (sample data; usage from SSO) |
+  | Slack | IT | $25,200 | 140 | 1 May 2027 | Connected (sample data) |
+  | Zoom | IT | $21,000 | 120 | 30 Jun 2027 | No usage data |
+
+  **Calendly is not seeded**: the demo adds it with **Add an app** (Marketing Ops, $14,400, 60 seats, 26 Dec 2026; `contract.json` still holds its contract). The surprise app is added the same way. Slack's spend is Business+ list price (140 × $15 a month × 12).
+
+- **Sample apps** (`SAMPLE_APPS=1`, only when the database is new): a background thread builds Zendesk, Notion and Slack from `specs/examples/<app>.json`, runs the same codegen and sandbox test as any connector on `fixtures/replay/<app>/recording.json`, saves the users and sets them live (Notion: live, users only). About 20 s to a minute. Zoom isn't seeded: Server-to-Server OAuth gets its token from `zoom.us` while the API is `api.zoom.us`, and a connector may call one host only (PRD §13).
+- **Apps tried in testing join the sample inventory, not connected:** Asana, Miro, Typeform and Loom, with spend, seats and renewal. Connect usage data pre-fills the docs link for Asana, Miro and Typeform. Asana and Miro draft and then need a real token; Typeform stops (`NO_USERS_API`); Loom has no users API docs to give.
+- **Slack sample** (`fixtures/make_demo_data.py`, its own random seed so the other files don't change): `users.list` (cursor `response_metadata.next_cursor`) and `team.accessLogs` (cursor; one row per user, IP and device; `date_last` in Unix seconds). 140 Acme people (4 who left are deactivated; 2 who left are still active), 4 multi-channel and 2 single-channel guests from an outside agency (not in HR data), Slackbot (listed with `is_bot` false, dropped by its ID) and 3 bots. 146 users, 140 billable (single-channel guests are free). The spec is T2: last sign-in from the access logs, 90-day window.
 
 - **Globex inventory:** Calendly (live account), plus whatever live accounts exist. Globex's HRIS/SSO files are optional; without them, F6 shows "Upload HR/SSO data to see who left".
 - **Files:**
@@ -647,10 +680,33 @@ Where the prototype had to choose something this spec didn't settle:
 - **The sandbox image carries a fingerprint** of the runtime code and refuses to run when it's out of date.
 - **The SSRF guard runs first** on every docs link, in every mode. Behind an outbound proxy with no local DNS, names are left to the proxy to resolve; IP literals and internal names are still refused locally.
 - **The Gemini SDK** (`google-genai` 2.34) uses `response_mime_type` + `response_json_schema` (§14).
+- **An added app needs its inventory details.** Owner, annual spend, seats and renewal date are required, so every app in the list has the same columns and the cards add up. A name is unique per tenant in any letter case. A failed add saves nothing.
+- **The docs source is checked first.** `POST /api/connectors` refuses a request with no docs link, file or library spec before it saves anything (it used to leave an empty draft behind).
+- **The app page reads stored records.** The Users tab shows the canonical records the last passing test saved (`app_users`); it never calls the vendor itself.
+- **The page's root font size stays 16px.** Tailwind sizes are in rem; a 14px root made every size 12.5% too small. Body text is set to 14px instead.
+- **Sample apps are built, not inserted.** Zendesk, Notion and Slack get their users by running generated code on recorded answers, not by writing rows into `app_users`, so "the connector retrieved these users" stays true. The inventory row carries `connector.sample` for the "Sample data" tag.
+- **Calendly's date range and status filter are optional in the recording.** Calendly accepts `/scheduled_events` without `min_start_time`/`max_start_time` or `status` (it returns every event; the window still applies), so the replay no longer refuses a valid AI draft that leaves them out.
+- **Recoverable seats count only seat holders.** A deactivated account or one the app doesn't bill (a free guest) is shown under "Left" or "Inactive" but never counted as a seat to recover. When `contract.json` has no entry for the app, the inventory's seats and spend are used.
+- **A quote over 25 words is trimmed, not fatal.** The AI's quote keeps its first 25 words (still word for word, and the evidence check still finds it on the page), so one long quote no longer stops a build at the rules check. Same for quotes added by a repair.
+- **Retrying a stopped build.** `POST /api/connectors/{id}/hint` with an empty text drafts again from the same docs ("Try again"); with a hint, as before. An uploaded OpenAPI file is reused.
+- **Recordings carry next-page links.** Calendly's `pagination.next_page` and Zendesk's `links.next` are in the recordings, as in the real APIs, so an AI draft that pages by link reads every page. Without them a live draft stopped after 25 of 48 users; the SSO cross-check caught it.
+- **A repaired version keeps the AI draft's evidence report** on the screens.
+- **Link checks come first.** `POST /api/connectors` refuses a docs link that isn't a full http(s) link with no spaces (`ftp://`, "not a link"), with its own message; the private-address message is only for private addresses. A renewal date in the past is refused. A malformed request gets one sentence naming the fields, never the framework's list.
+- **One test at a time.** A second "Run test" while one runs returns the running test's ID.
+- **The inventory's numbers drive the savings.** Seats, spend and renewal come from the inventory row (what the admin typed in Add an app, or the spend data); `contract.json` only fills in an app the inventory lacks. The app page's cards show the savings step's own numbers (Inactive, Left the company, Seats nobody holds), so the two screens never disagree.
+- **Renewal days count from the real date.** Activity in sample data is still judged on its recording date (29 Oct 2026); days to renewal use today.
+- **A users list must list users.** A draft whose users endpoint is the current-user call (`/me`, `/users/me`, or the bootstrap call itself) stops with `NO_USERS_API`: the test would pass with one person.
+- **A saved token stays saved.** Saving the connection again with the token field empty keeps the token saved before ("Run the test again").
+- **A rejected token marks Login as failed**, not "Signed in": a bearer token is only proved by a call that accepts it.
+- **A stopped build's AI calls are recorded** in `llm_calls`, so its cost counts.
+- **Evidence names are tidied, not trusted.** The draft form calls the streams `users_stream` and `usage_stream`, and the AI sometimes names evidence that way (`users_stream.path`, `bootstrap[0].path`). Those become the spec's JSON Pointers (`/streams/users/path`); a name that can't be one is dropped instead of failing the rules check.
+- **A repair's evidence is checked with the patch.** Its quotes join the spec before the rules check, and only quotes that cite a page are kept (a file-only build has none). A bad one used to reach codegen and stop the test with a server error.
+- **Error details reach the message.** The runner's own words ("api_token not given") are kept with the run, so `BAD_INPUT` never shows a blank.
+- **Speed.** A Calendly build went from 5 min 51 s to about 1.5–2 min: parallel docs reading, capped thinking, prompt rules that avoid re-asks, and the mypy cache. The progress screens reconnect, so a build past 5 minutes no longer freezes the screen.
 
 ## 16. Tests
 
-The acceptance scenarios (SC-01 to SC-17), the test plan, the accounts needed and the model benchmark are in `EVAL.md`.
+The acceptance scenarios (SC-01 to SC-28), the test plan, the accounts needed and the model benchmark are in `EVAL.md`.
 
 ---
 

@@ -21,6 +21,7 @@ COMPARED = (
     "role",
     "status",
     "is_admin",
+    "is_billable",
     "usage_available",
     "usage_is_proxy",
     "usage_metric_label",
@@ -41,7 +42,7 @@ def replay(app: str, build_module: Callable[[dict[str, Any]], Path]) -> tuple[An
     return run_module(module, payload), expected
 
 
-@pytest.mark.parametrize("app", ["calendly", "zendesk", "notion"])
+@pytest.mark.parametrize("app", ["calendly", "zendesk", "notion", "slack"])
 def test_replay_matches_expected_users(app: str, build_module: Callable[[dict[str, Any]], Path]) -> None:
     run, expected = replay(app, build_module)
     assert run.exit_code == 0, run.result

@@ -18,6 +18,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from app.config import writable_data_dir
 from app.services.spec_validator import validate_spec
 
 TEMPLATES = Path(__file__).resolve().parent / "templates"
@@ -109,7 +110,8 @@ def check_code(code: str, name: str = "connector") -> CodeCheck:
         path = Path(tmp) / f"{name}.py"
         path.write_text(code)
         ruff = subprocess.run(
-            [*ruff_command(), "check", "--config", str(PYPROJECT), "--no-cache", str(path)],
+            # Spec values (a JMESPath, a docs quote) can make a long line; that's data, not a code fault.
+            [*ruff_command(), "check", "--config", str(PYPROJECT), "--no-cache", "--extend-ignore", "E501", str(path)],
             capture_output=True,
             text=True,
             check=False,
@@ -122,8 +124,10 @@ def check_code(code: str, name: str = "connector") -> CodeCheck:
                 "--strict",
                 "--config-file",
                 str(PYPROJECT),
+                # A cache that outlives the check: mypy then re-reads only the new module, not httpx
+                # and pydantic each time (about 40 s down to a few). A stale or broken cache is just rebuilt.
                 "--cache-dir",
-                str(Path(tmp) / ".mypy_cache"),
+                str(writable_data_dir() / "mypy_cache"),
                 str(path),
             ],
             capture_output=True,
@@ -154,6 +158,9 @@ def _context(spec: dict[str, Any], version: int) -> dict[str, Any]:
         "tier": app["tier"],
         "usage_definition": usage_def,
         "has_usage_stream": usage is not None,
+        # A usage stream that only gives a last-active time has no number to report (not 0).
+        "counts_usage": usage is not None
+        and any(m["target"] == "usage_metric_value" for m in usage["aggregate"]["metrics"]),
         "has_last_active": "last_active_at" in field_map,
         "join_on": usage["aggregate"]["join_on"] if usage else None,
         "window_days": usage["aggregate"]["window_days"] if usage else None,

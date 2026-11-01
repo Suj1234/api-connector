@@ -2,11 +2,14 @@
 
 A quote passes when rapidfuzz.partial_ratio ≥ 90 against the cited page's text, after both are
 normalised (lower-case, markdown stripped, whitespace collapsed). An OpenAPI pointer passes when it
-exists in the fetched file. Conflicts are settled by source rank (PRD §6.3), not by the model.
+exists in the fetched file. A quote on the page isn't enough for the fields that say where we call
+and how fast: the API host and every path must also appear on the cited page (or at the pointer),
+and the rate limit's number in the quote. Conflicts are settled by source rank (PRD §6.3), not by the model.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -60,19 +63,20 @@ class EvidenceReport:
         return 100.0 * len(self.verified) / total if total else 100.0
 
 
-def _pointer_exists(document: Any, pointer: str) -> bool:
-    if pointer in ("", "/"):
-        return document is not None
+def _pointer_node(document: Any, pointer: str) -> Any:
+    """The node a JSON Pointer names in the OpenAPI file, or _MISSING."""
+    if document is None:
+        return _MISSING
     node = document
-    for raw in pointer.lstrip("/").split("/"):
+    for raw in pointer.strip("/").split("/") if pointer.strip("/") else []:
         part = raw.replace("~1", "/").replace("~0", "~")
         if isinstance(node, dict) and part in node:
             node = node[part]
         elif isinstance(node, list) and part.isdigit() and int(part) < len(node):
             node = node[int(part)]
         else:
-            return False
-    return True
+            return _MISSING
+    return node
 
 
 def _evidence_for(evidence: dict[str, Any], pointer: str) -> dict[str, Any] | None:
@@ -96,11 +100,17 @@ def check(spec: dict[str, Any], bundle: DocsBundle) -> EvidenceReport:
         if item is None:
             report.failed[pointer] = "no evidence given"
             continue
+        terms = _value_terms(spec, pointer)
         if item.get("source") == "openapi":
-            if bundle.openapi is not None and _pointer_exists(bundle.openapi, item.get("pointer", "")):
-                report.verified.append(pointer)
-            else:
+            node = _pointer_node(bundle.openapi, item.get("pointer", ""))
+            if node is _MISSING:
                 report.failed[pointer] = "OpenAPI pointer not found"
+            elif pointer == RATE_LIMIT and not _has_rate(json.dumps(node), spec["rate_limit"]["requests_per_minute"]):
+                report.failed[pointer] = "the OpenAPI file doesn't give this number of requests there"
+            elif missing := _missing(terms, normalise(item.get("pointer", "").replace("~1", "/") + json.dumps(node))):
+                report.failed[pointer] = f"the OpenAPI file doesn't show {missing} there"
+            else:
+                report.verified.append(pointer)
             continue
         page = bundle.page(item.get("url", ""))
         if page is None:
@@ -108,11 +118,52 @@ def check(spec: dict[str, Any], bundle: DocsBundle) -> EvidenceReport:
             continue
         text = page_text.setdefault(page.url, normalise(page.text))
         quote = normalise(item.get("quote", ""))
-        if quote and fuzz.partial_ratio(quote, text) >= THRESHOLD:
-            report.verified.append(pointer)
-        else:
+        if not quote or fuzz.partial_ratio(quote, text) < THRESHOLD:
             report.failed[pointer] = "quote not found on the cited page"
+        elif pointer == RATE_LIMIT and not _has_rate(item.get("quote", ""), spec["rate_limit"]["requests_per_minute"]):
+            report.failed[pointer] = "the quote doesn't give this number of requests"
+        elif missing := _missing(terms, text):
+            report.failed[pointer] = f"the cited page doesn't mention {missing}"
+        else:
+            report.verified.append(pointer)
     return report
+
+
+RATE_LIMIT = "/rate_limit/requests_per_minute"
+_MISSING = object()
+
+
+def _value_terms(spec: dict[str, Any], pointer: str) -> list[str]:
+    """What the proof of a "where we call" field must mention: the API host, or a path's fixed parts."""
+    if pointer == "/base_url":
+        host = urlsplit(spec["base_url"]).netloc.lower()
+        return [".".join(label for label in host.split(".") if "{" not in label)]
+    if pointer.endswith("/path") or pointer == "/auth/token_url":
+        value = _field_value(spec, pointer)
+        path = urlsplit(value).path if "://" in value else value
+        return [part for part in path.split("/") if part and "{" not in part]
+    return []
+
+
+def _field_value(spec: dict[str, Any], pointer: str) -> str:
+    node: Any = spec
+    for part in pointer.strip("/").split("/"):
+        node = node[int(part)] if isinstance(node, list) else node.get(part, "")
+    return str(node or "")
+
+
+def _missing(terms: list[str], text: str) -> str | None:
+    """The first term not on the page as a whole word ("users" in "/v1/users", not in "superusers")."""
+    for term in terms:
+        if not re.search(rf"(?<![a-z0-9]){re.escape(normalise(term))}(?![a-z0-9])", text):
+            return term
+    return None
+
+
+def _has_rate(quote: str, per_minute: int) -> bool:
+    """The quote gives the limit per minute, or the same limit per second or per hour."""
+    numbers = {int(n.replace(",", "")) for n in re.findall(r"\d[\d,]*", quote)}
+    return per_minute in numbers or per_minute / 60 in numbers or per_minute * 60 in numbers
 
 
 NEVER_DROPPED = ("/external_id", "/email")  # the user id and the cross-check join key

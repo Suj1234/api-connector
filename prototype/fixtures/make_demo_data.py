@@ -20,6 +20,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 RECORDED_AT = datetime(2026, 10, 29, 9, 0, 0, tzinfo=UTC)
 DOMAIN = "acme.example"
@@ -229,28 +230,35 @@ def calendly(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, 
         for m in members
     ]
     interactions = [{"method": "GET", "url": f"{api}/users/me", "query": {}, "body": me}]
+    members_url, members_query = f"{api}/organization_memberships", {"organization": org, "count": "*?"}
     interactions += _cursor_pages(
-        f"{api}/organization_memberships",
-        {"organization": org, "count": "*?"},
+        members_url,
+        members_query,
         member_rows,
         [25],
         "page_token",
-        lambda rows, token: {"collection": rows, "pagination": {"count": len(rows), "next_page_token": token}},
+        lambda rows, token: {
+            "collection": rows,
+            "pagination": _calendly_paging(rows, token, members_url, members_query),
+        },
     )
+    # Calendly's date range and status filter are optional: without them the API returns every event, and the
+    # window still applies. The recorded events are all active.
     event_query = {
         "organization": org,
-        "min_start_time": "*",
-        "max_start_time": "*",
-        "status": "active",
+        "min_start_time": "*?",
+        "max_start_time": "*?",
+        "status": "*?",
         "count": "*?",
     }
+    events_url = f"{api}/scheduled_events"
     interactions += _cursor_pages(
-        f"{api}/scheduled_events",
+        events_url,
         event_query,
         events,
         [100],
         "page_token",
-        lambda rows, token: {"collection": rows, "pagination": {"count": len(rows), "next_page_token": token}},
+        lambda rows, token: {"collection": rows, "pagination": _calendly_paging(rows, token, events_url, event_query)},
     )
     recording = {"app": "calendly", "recorded_at": iso(RECORDED_AT), "variables": {}, "interactions": interactions}
     expected = {
@@ -326,15 +334,17 @@ def zendesk(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, A
         "query": {},
         "body": {"access_token": "replay-access-token-not-secret", "token_type": "bearer", "scope": "read"},
     }
+    users_url, users_query = f"{api}/api/v2/users", {"role[]": ["agent", "admin"], "page[size]": "*?"}
     pages = _cursor_pages(
-        f"{api}/api/v2/users",
-        {"role[]": ["agent", "admin"], "page[size]": "*?"},
+        users_url,
+        users_query,
         rows,
         [20],
         "page[after]",
         lambda page, cursor: {
             "users": page,
             "meta": {"has_more": cursor is not None, "after_cursor": cursor, "before_cursor": None},
+            "links": {"next": _page_link(users_url, users_query, "page[after]", cursor), "prev": None},
         },
     )
     recording = {
@@ -390,6 +400,151 @@ def notion(rng: random.Random, pool: list[dict[str, Any]]) -> tuple[dict[str, An
     )
     recording = {"app": "notion", "recorded_at": iso(RECORDED_AT), "variables": {}, "interactions": pages}
     return recording, expected, {"people": people}
+
+
+# --- Slack (T2) --------------------------------------------------------------------
+
+SLACK_ZONES = [
+    ("America/Los_Angeles", "Pacific Daylight Time", -25200),
+    ("America/New_York", "Eastern Daylight Time", -14400),
+    ("Europe/London", "Greenwich Mean Time", 0),
+    ("Asia/Kolkata", "India Standard Time", 19800),
+]
+SLACK_TITLES = [
+    "Account Executive", "Support Specialist", "Software Engineer", "Product Designer", "Marketing Manager",
+    "Recruiter", "Data Analyst", "Finance Partner", "Customer Success Manager", "Engineering Manager",
+]  # fmt: skip
+SLACK_AGENTS = {
+    "desktop": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Slack/4.46.101 Chrome/138.0.7204.100 Electron/37.2.2 Safari/537.36",
+    "ios": "com.tinyspeck.chatlyio/25.10.10 (iPhone; iOS 18.6.2; Scale/3.00)",
+    "android": "com.Slack/25.10.10.0 (Linux; Android 15; Pixel 8)",
+    "web": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+}
+GUEST_DOMAIN = "brightpath-studio.example"  # an outside agency: guests are not in Acme's HR data
+
+
+def slack_id(prefix: str, *parts: object) -> str:
+    return prefix + "0" + uuid.uuid5(NS, "/".join(str(p) for p in ("slack", *parts))).hex[:9].upper()
+
+
+def slack(
+    rng: random.Random, pool: list[dict[str, Any]], left: list[dict[str, Any]]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Acme on Slack Business+: 140 people, 6 guests, 4 bots. users.list + team.accessLogs (TRD §4 tiers)."""
+    api = "https://slack.com/api"
+    team = slack_id("T", "team")
+    window = 90
+    left_ids = {p["i"] for p in left}
+    gone = {p["i"] for p in left[:4]}  # offboarded: deactivated in Slack. left[4:] left Acme but are still active
+    staff = [p for p in pool if p["i"] not in left_ids]
+    names = {p["name"] for p in pool}
+    guests = []
+    while len(guests) < 6:
+        name = f"{rng.choice(FIRST)} {rng.choice(LAST)}"
+        if name not in names:
+            names.add(name)
+            first, last = name.split(" ")
+            guests.append(
+                {"i": f"g{len(guests)}", "name": name, "email": f"{first.lower()}.{last.lower()}@{GUEST_DOMAIN}"}
+            )
+
+    def last_seen(p: dict[str, Any]) -> datetime:
+        if p["i"] in gone:
+            return days_ago(rng, 45, 120)
+        if p["i"] in left_ids:
+            return days_ago(rng, 41, 60)  # before they left
+        if p["i"] in (70, 71):
+            return days_ago(rng, 35, 80)  # on leave
+        r = rng.random()
+        if r < 0.80:
+            return days_ago(rng, 0, 6)
+        if r < 0.89:
+            return days_ago(rng, 7, 29)
+        if r < 0.97:
+            return days_ago(rng, 30, 89)
+        return days_ago(rng, 95, 200)  # no sign-in in the 90-day window
+
+    def ts(value: datetime) -> int:
+        return int(value.timestamp())
+
+    members: list[dict[str, Any]] = []
+    logins: list[dict[str, Any]] = []
+    expected: dict[str, Any] = {}
+    people = [(p, "member") for p in pool] + [(g, "multi") for g in guests[:4]] + [(g, "single") for g in guests[4:]]
+    roles = {staff[0]["i"]: "Primary owner", staff[1]["i"]: "Owner", **{p["i"]: "Admin" for p in staff[2:5]}}
+    for n, (p, kind) in enumerate(people):
+        uid = slack_id("U", p["i"])
+        first, last = p["name"].split(" ")
+        zone = rng.choice(SLACK_ZONES)
+        deleted = p["i"] in gone
+        role = roles.get(p["i"], "Member") if kind == "member" else f"{kind.title()}-channel guest"
+        seen = last_seen(p) if kind == "member" else days_ago(rng, 0, 20 if n % 3 else 50)
+        members.append(
+            {
+                "id": uid, "team_id": team, "name": f"{first.lower()}.{last.lower()}", "deleted": deleted,
+                "color": rng.choice(["9f69e7", "4bbe2e", "e7392d", "3c989f", "e0a729"]),
+                "real_name": p["name"], "tz": zone[0], "tz_label": zone[1], "tz_offset": zone[2],
+                "profile": {
+                    "title": rng.choice(SLACK_TITLES) if kind == "member" else "Contractor, Brightpath Studio",
+                    "real_name": p["name"], "display_name": first, "email": p["email"],
+                    "first_name": first, "last_name": last, "team": team,
+                },
+                "is_admin": role in ("Primary owner", "Owner", "Admin"), "is_owner": role in ("Primary owner", "Owner"),
+                "is_primary_owner": role == "Primary owner", "is_restricted": kind != "member",
+                "is_ultra_restricted": kind == "single", "is_bot": False, "is_app_user": False,
+                "updated": ts(seen - timedelta(days=rng.randint(1, 300))), "has_2fa": n % 4 != 0,
+            }
+        )  # fmt: skip
+        # One access-log row per device (user + IP + user agent); the newest is the last sign-in.
+        ip = f"203.0.113.{n % 250 + 1}" if n % 2 else f"198.51.100.{n % 250 + 1}"
+        for d, device in enumerate(rng.sample(sorted(SLACK_AGENTS), rng.randint(1, 3))):
+            latest = seen - timedelta(days=rng.randint(1, 20) if d else 0, hours=d)
+            logins.append(
+                {
+                    "user_id": uid, "username": f"{first.lower()}.{last.lower()}",
+                    "date_first": ts(latest - timedelta(days=rng.randint(30, 400))), "date_last": ts(latest),
+                    "count": rng.randint(5, 900), "ip": ip, "user_agent": SLACK_AGENTS[device],
+                    "isp": "Example Broadband", "country": "US", "region": "California",
+                }
+            )  # fmt: skip
+        expected[uid] = {
+            "email": p["email"],
+            "name": p["name"],
+            "role": role,
+            "status": "deactivated" if deleted else "active",
+            "is_admin": role in ("Primary owner", "Owner", "Admin"),
+            "is_billable": not deleted and kind != "single",  # single-channel guests are free
+            "usage_available": True,
+            "usage_is_proxy": False,
+            "usage_metric_label": "Last sign-in",
+            "usage_metric_value": None,
+            "usage_window_days": window,
+            "last_active_at": _z(seen) if RECORDED_AT - seen <= timedelta(days=window) else None,
+        }
+    # Not seats: Slackbot (listed with is_bot false) and the workspace's apps.
+    members.insert(0, {
+        "id": "USLACKBOT", "team_id": team, "name": "slackbot", "deleted": False, "real_name": "Slackbot",
+        "profile": {"real_name": "Slackbot", "display_name": "Slackbot", "first_name": "slackbot", "last_name": ""},
+        "is_admin": False, "is_owner": False, "is_primary_owner": False, "is_restricted": False,
+        "is_ultra_restricted": False, "is_bot": False, "is_app_user": False, "updated": 0,
+    })  # fmt: skip
+    for n, bot in enumerate(["Standup bot", "Deploy notifier", "Polly"]):
+        members.insert(40 * (n + 1), {
+            "id": slack_id("U", "bot", n), "team_id": team, "name": bot.lower().replace(" ", "_"), "deleted": False,
+            "real_name": bot, "profile": {"real_name": bot, "bot_id": slack_id("B", "bot", n)},
+            "is_admin": False, "is_owner": False, "is_primary_owner": False, "is_restricted": False,
+            "is_ultra_restricted": False, "is_bot": True, "is_app_user": False, "updated": ts(RECORDED_AT) - 86400 * n,
+        })  # fmt: skip
+    logins.sort(key=lambda row: -row["date_last"])  # newest first, as Slack returns them
+
+    def page(key: str) -> Any:
+        return lambda rows, cursor: {"ok": True, key: rows, "response_metadata": {"next_cursor": cursor or ""}}
+
+    interactions = _cursor_pages(f"{api}/users.list", {"limit": "*?"}, members, [80], "cursor", page("members"))
+    interactions += _cursor_pages(f"{api}/team.accessLogs", {"limit": "*?"}, logins, [200], "cursor", page("logins"))
+    recording = {"app": "slack", "recorded_at": iso(RECORDED_AT), "variables": {}, "interactions": interactions}
+    return recording, expected
 
 
 # --- Acme's HR, SSO and contract files (TRD §11) ---------------------------------------
@@ -457,6 +612,21 @@ def _z(value: datetime | None) -> str | None:
     return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ") if value else None
 
 
+def _page_link(url: str, query: dict[str, Any], param: str, token: str | None) -> str | None:
+    """The ready-made next-page link real APIs send next to the token (Calendly's next_page, Zendesk's links.next),
+    so an AI draft that pages by link works on the recording as it would on the real API."""
+    if token is None:
+        return None
+    fixed = [
+        (k, v) for k, vs in query.items() for v in (vs if isinstance(vs, list) else [vs]) if not str(v).startswith("*")
+    ]
+    return f"{url}?{urlencode([*fixed, (param, token)])}"
+
+
+def _calendly_paging(rows: list[Any], token: str | None, url: str, query: dict[str, Any]) -> dict[str, Any]:
+    return {"count": len(rows), "next_page": _page_link(url, query, "page_token", token), "next_page_token": token}
+
+
 def _cursor_pages(
     url: str, query: dict[str, Any], rows: list[Any], first_page_sizes: list[int], cursor_param: str, body: Any
 ) -> list[dict[str, Any]]:
@@ -481,7 +651,10 @@ def build(out_dir: Path) -> None:
     cal_rec, cal_exp, cal_truth = calendly(rng, pool)
     zen_rec, zen_exp, zen_truth = zendesk(rng, pool)
     not_rec, not_exp, not_truth = notion(rng, pool)
-    for app, rec, exp in (("calendly", cal_rec, cal_exp), ("zendesk", zen_rec, zen_exp), ("notion", not_rec, not_exp)):
+    # Slack has its own seed, so adding it left the files above unchanged.
+    slack_rec, slack_exp = slack(random.Random(20261030), pool, cal_truth["left"])
+    apps = [("calendly", cal_rec, cal_exp), ("zendesk", zen_rec, zen_exp), ("notion", not_rec, not_exp)]
+    for app, rec, exp in [*apps, ("slack", slack_rec, slack_exp)]:
         folder = out_dir / "replay" / app
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "recording.json").write_text(json.dumps(rec, indent=1) + "\n")

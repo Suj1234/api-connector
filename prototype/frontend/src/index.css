@@ -4,14 +4,14 @@
 @tailwind utilities;
 
 :root {
-  --primary: #0A2540; --primary-hover: #1B3A5C; --primary-pressed: #061A2E; --primary-subtle: #E9EEF4;
-  --focus-ring: #7A9CC6; --link: #0055BC;
-  --surface: #FFFFFF; --surface-subdued: #F6F8FA; --border: #EBEEF1; --border-strong: #C0C8D2;
+  --primary: #635BFF; --primary-hover: #5851EA; --primary-pressed: #533AFD; --primary-subtle: #F5F4FF; --primary-tint: #E3E1FF; --primary-disabled: #B3ADFF;
+  --focus-ring: #635BFF; --link: #533AFD; --navy: #0A2540; --overlay: rgba(183, 192, 205, 0.6);
+  --surface: #FFFFFF; --surface-subdued: #F6F8FA; --border: #EBEEF1; --border-strong: #D5DBE1; --border-hover: #C0C8D2;
   --text-heading: #21252C; --text: #353A44; --text-subdued: #545969; --text-muted: #687385; --text-placeholder: #A3ACBA;
-  --success-bg: #D1FAB3; --success-fg: #217005;
-  --danger-bg: #FFE8EE; --danger-fg: #B3093C; --danger: #DF1B41;
-  --warning-bg: #FEF8CA; --warning-fg: #8A4B00;
-  --info-bg: #CFF4FC; --info-fg: #0055BC;
+  --success: #2A9B0E; --success-bg: #D1FAB3; --success-fg: #217005; --success-border: #A8E28E;
+  --danger-subtle: #FDF4F5; --danger-bg: #FFE8EE; --danger-fg: #B3093C; --danger: #DF1B41; --danger-border: #FFC4D3;
+  --warning-bg: #FEF8CA; --warning-fg: #8A4B00; --warning-border: #F5DE7A;
+  --info-bg: #CFF4FC; --info-fg: #0055BC; --info-border: #A4E3F5;
   --neutral-bg: #EBEEF1; --neutral-fg: #414552;
 
   --chart-left: #DF1B41; --chart-inactive: #EE6902; --chart-never: #87909F; --chart-not-in-hr: #0055BC;
@@ -20,15 +20,36 @@
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
   --radius-sm: 6px; --radius-md: 8px;
   --shadow-float: 0 4px 16px rgba(10, 37, 64, 0.12);
+  --shadow-modal: 0 0 0 1px rgba(64, 68, 82, 0.08), 0 5px 15px rgba(0, 0, 0, 0.12), 0 15px 35px rgba(48, 49, 61, 0.08);
+  --shadow-focus: 0 0 0 1px #635BFF, 0 0 0 4px rgba(99, 91, 255, 0.28);
+  --shadow-control: 0 1px 1px rgba(0, 0, 0, 0.08), 0 2px 5px rgba(60, 66, 87, 0.08);
+  --shadow-primary: 0 1px 1px rgba(0, 0, 0, 0.12), 0 2px 5px rgba(60, 66, 87, 0.12);
+  --shadow-popover: 0 0 0 1px rgba(64, 68, 82, 0.08), 0 3px 6px rgba(0, 0, 0, 0.12), 0 7px 14px rgba(60, 66, 87, 0.08);
+  --gradient-yellow: #FFCB57; --gradient-red: #FF333D; --gradient-purple: #A960EE; --gradient-cyan: #90E0FF;
 }
 
-html, body { background: var(--surface); color: var(--text); font-family: var(--font-sans); font-size: 14px; line-height: 20px; }
+/* 14px body text on the default 16px root, so Tailwind's rem sizes (text-xs 12px, h-8 32px …) are true to the reference. */
+html, body { background: var(--surface); color: var(--text); font-family: var(--font-sans); }
+body { font-size: 14px; line-height: 20px; }
 * { font-variant-numeric: tabular-nums; }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-.title { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
-.heading { font-size: 20px; line-height: 28px; font-weight: 600; color: var(--text-heading); }
-.heading-sm { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-heading); }
-.caption { font-size: 12px; line-height: 16px; color: var(--text-muted); }
-.eyebrow { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
-.metric { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
-.code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }
+/* In the components layer so a colour utility (text-warning-fg …) on the same element wins. */
+@layer components {
+  .title { font-size: 28px; line-height: 36px; font-weight: 700; color: var(--text-heading); }
+  .heading { font-size: 20px; line-height: 28px; font-weight: 600; color: var(--text-heading); }
+  .heading-sm { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-heading); }
+  .caption { font-size: 12px; line-height: 16px; color: var(--text-muted); }
+  .eyebrow { font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .metric { font-size: 28px; line-height: 36px; font-weight: 600; color: var(--text-heading); }
+  .code { font-family: var(--font-mono); font-size: 13px; line-height: 20px; }
+}
+/* Login art (DESIGN.md §8): the reference sign-in band, skewed across the top of the page. */
+.auth-art {
+  position: absolute; inset: 0 0 38% 0; transform: skewY(-12deg); transform-origin: top left;
+  background: linear-gradient(150deg, var(--gradient-yellow) 5%, var(--gradient-red) 30%, var(--gradient-purple) 60%, var(--gradient-cyan) 95%);
+  background-size: 200% 200%; animation: auth-drift 15s ease-in-out infinite alternate;
+}
+@keyframes auth-drift { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+.auth-card { animation: auth-in 300ms ease-out both; }
+@keyframes auth-in { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .auth-art, .auth-card { animation: none; } }
