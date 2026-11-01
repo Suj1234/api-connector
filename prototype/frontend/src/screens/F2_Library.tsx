@@ -22,19 +22,9 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-const KNOWN_DOCS: Record<string, string> = {
-  calendly: "https://developer.calendly.com/api-docs",
-  zendesk: "https://developer.zendesk.com/api-reference/ticketing/users/users/",
-  notion: "https://developers.notion.com/reference/get-users",
-  asana: "https://developers.asana.com/reference/getusersforworkspace",
-  miro: "https://developers.miro.com/reference/enterprise-get-organization-members",
-  typeform: "https://www.typeform.com/developers/",
-};
-
 export default function ConnectDrawer({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { app = "" } = useParams();
   const navigate = useNavigate();
-  const startDocs = KNOWN_DOCS[app.toLowerCase()] ?? "";
   const [row, setRow] = useState<InventoryRow | null>(null);
   const [appName, setAppName] = useState("");
   const [owner, setOwner] = useState("");
@@ -42,7 +32,7 @@ export default function ConnectDrawer({ onClose, onSaved }: { onClose: () => voi
   const [seats, setSeats] = useState("");
   const [renewal, setRenewal] = useState("");
   const [source, setSource] = useState<"link" | "file">("link"); // one or the other, never both
-  const [docsUrl, setDocsUrl] = useState(startDocs);
+  const [docsUrl, setDocsUrl] = useState("");
   const [docsTouched, setDocsTouched] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -60,7 +50,7 @@ export default function ConnectDrawer({ onClose, onSaved }: { onClose: () => voi
   const seatsOk = Number.isInteger(Number(seats)) && Number(seats) >= 1;
   const detailsOk = !!appName.trim() && !!owner.trim() && spendOk && seatsOk && !!renewal;
   const ready = (source === "link" ? linkOk(docsUrl) : !!file) && (!!app || detailsOk);
-  const dirty = (!app && !!(appName || owner || spend || seats || renewal)) || docsUrl !== startDocs || !!file;
+  const dirty = (!app && !!(appName || owner || spend || seats || renewal)) || !!docsUrl || !!file;
 
   // A reload or closed tab loses the form too, so the browser asks first.
   useEffect(() => {
@@ -179,7 +169,7 @@ export default function ConnectDrawer({ onClose, onSaved }: { onClose: () => voi
             {source === "link" ? (
               <Field
                 label="API docs link"
-                help="For example https://developer.calendly.com/api-docs. If the docs point to an OpenAPI file, the AI finds and uses it too."
+                help="The app's public API reference. If it points to an OpenAPI file, the AI finds and uses it too."
                 error={docsTouched && docsUrl.trim() && !linkOk(docsUrl) ? "Enter a full link, like https://developer.example.com/api." : null}
               >
                 <TextInput value={docsUrl} onChange={(e) => setDocsUrl(e.target.value)} onBlur={() => setDocsTouched(true)} placeholder="https://developer.example.com/api" type="url" />

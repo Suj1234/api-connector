@@ -2,7 +2,7 @@
 
 A generic builder that turns any SaaS app's public API docs into a tested, read-only connector for users and usage data. AI fills a structured connector spec, with a docs quote as proof for every answer. Fixed templates write the code. A sandbox tests it, and a cross-check with HR, SSO and contract data shows the savings before anything goes live.
 
-**Live prototype:** https://integration-builder-five.vercel.app (login by invite). It runs on a sample company with fake people; add an app, such as Calendly, from its API docs and follow it through to its users.
+**Live prototype:** https://integration-builder-five.vercel.app (login by invite). It runs on a sample company with fake people; add any app from its API docs and follow it through to its users.
 
 ## Read in this order
 
