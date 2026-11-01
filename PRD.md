@@ -2,17 +2,17 @@
 
 **For:** Senior PM take-home assignment
 **Author:** Sujeet Kumar
-**Date:** 29 Oct 2026
-**Status:** v4. Generic builder, Gemini as the AI model. The technical build spec moved to `TRD.md`.
+**Date:** 1 Nov 2026
+**Status:** v5. What we built and why (§0, §7), and what comes next (§13). How it is built: `TRD.md`.
 
 How the documents fit together:
 
 | Document | Answers |
 |---|---|
-| **`PRD.md`** (this file) | What we build and why: problem, customer, approach, safeguards, model choice, metrics, demo |
-| `TRD.md` | How the prototype is built: spec format, engine, sandbox, AI pipeline, API, tables, savings math |
+| **`PRD.md`** (this file) | What we build and why: problem, customer, approach, safeguards, model choice, metrics, roadmap |
+| `TRD.md` | How it is built: architecture, stack, deployment, spec format, engine, AI pipeline, API, tables, savings math |
 | `DESIGN.md` | How it looks: colours, type, spacing, components, writing rules, screen layouts |
-| `EVAL.md` | How we know it works: the AI quality eval, acceptance scenarios, security tests, test plan |
+| `EVAL.md` | How we know it works: test approach, the AI benchmark, acceptance scenarios, results |
 
 ---
 
@@ -34,9 +34,9 @@ Every answer carries a quote from the docs as proof. Fixed templates then turn t
 
 | Deliverable | Our answer | Where |
 |---|---|---|
-| **1. Figma** | We answer with a **clickable prototype** instead of static Figma frames, so the panel can click through the real flow. The screens are in §7, built from a dashboard design reference (`DESIGN.md`). The flow starts **inside the app inventory and the renewal flow**, shows **the users and usage the generated code retrieved** on each app's page, and ends on a **savings screen**, not on a code screen. | §7 |
+| **1. Figma** | We answer with a **clickable prototype** instead of static Figma frames, so the panel can click through the real flow. It is live at https://integration-builder-five.vercel.app (login by invite); the screens are in §7, built from a dashboard design reference (`DESIGN.md`). The flow starts **inside the app inventory and the renewal flow**, shows **the users and usage the generated code retrieved** on each app's page, and ends on a **savings screen**, not on a code screen. | §7 |
 | **2. Safeguards / sandbox then prod** | **Yes, Test → checked → Live.** But the sandbox is **the platform's own isolated runner**. It reads the customer's real data with read-only calls, because most vendors don't give customers a test account. The two real risks are: (1) **wrong usage data that leads to cutting seats people use**, and (2) **the connector token itself** (see the Drift breach, §8). And we stop asking customers to be developers: nobody writes or edits code, ever. | §8 |
-| **3. Prototype + AI model** | **One generic engine**, proven on three different app shapes and one "surprise" app pasted live (§5.4). **Model:** Google Gemini. `gemini-3.8-flash` drafts and repairs; `gemini-4-argon` handles the final repair attempt. Both sit behind a swappable interface, and **the choice is made by a measured benchmark**, not opinion. | §9, `TRD.md`, `EVAL.md` |
+| **3. Prototype + AI model** | **One generic engine**, proven on four app shapes from their specs and on apps it had never seen: Calendly built live from its docs, Asana and Miro as surprise apps (§5.4). **Model:** Google Gemini `gemini-4-argon`, **chosen by a measured benchmark**, not opinion: it got all 9 test connectors right with no repairs, against 7 of 9 for `gemini-3.8-flash` (§9). It sits behind a swappable interface. | §9, `TRD.md`, `EVAL.md` |
 
 **What makes this different.** AI-built connectors already exist in our market (Torii, Lumos, Josys), and so do shared integration catalogs (BetterCloud, Josys). So neither one is an edge on its own. The platform can win on five things, and this list is used everywhere in this document:
 
@@ -45,6 +45,19 @@ Every answer carries a quote from the docs as proof. Fixed templates then turn t
 3. **Starts from renewals and inventory**, where the money decision happens.
 4. **The connector token is governed like any other identity**: exact scopes, a known owner, and a warning before that owner leaves.
 5. **A checked library run by the platform team.** Build once, review, share. Repairs roll out to a few customers first, then to everyone.
+
+### Built today
+
+Live at https://integration-builder-five.vercel.app (login by invite), on a sample company (Acme, fake people):
+- **App inventory:** 8 apps with spend, seats and renewal dates. Zendesk, Notion and Slack are connected on sample data.
+- **Add an app** with its owner, spend, seats and renewal date, then **Build with AI** from its API docs link or OpenAPI file. Gemini fills the connector spec in 1 to 2 minutes, with a docs quote proving every answer.
+- **Review in plain words**, then a **test** in a sandbox that can only reach the app's own host. The generated code covers the assignment's six items.
+- **Savings check** against HR, SSO and contract data, then **Go live**.
+- **App page:** every user the generated code retrieved, each with their own status (left the company, inactive, active) and the reason.
+- **Delete app** removes an added app and everything built for it, so it can be added again.
+- **Stack:** a React app and a FastAPI function on Vercel, Neon Postgres, Google Gemini (`TRD.md` §2).
+
+The shared library, daily sync, staged repairs and the rest of the approach below come next (§13).
 
 ---
 
@@ -116,6 +129,8 @@ Vendors are shipping MCP servers, but these are built for one person's own data,
 
 ## 3. Our approach: build once, check, share, run by the platform team
 
+This is the target operating model. The prototype covers its build-and-check part for one company (§0); the shared library comes next (§13).
+
 **Stance (this challenges the assignment's premise):** don't turn customers into developers, not even "safe" ones. The unit of work is the **app**, not the customer. The platform's own team builds and checks each app's connector once, from public docs, and puts it in a shared library. Customers can self-serve for apps the library doesn't have yet. **Their builds stay private** unless they opt in.
 
 **How it works over time:**
@@ -179,9 +194,9 @@ Only the spec is different for each app. Every other step is the same for every 
 | Tier | What the API gives | Examples | If usage is weak or missing |
 |---|---|---|---|
 | **T1** | The user list includes a last-login or last-activity field | Zendesk (`last_login_at`), Zoom (`last_login_time`), GitHub Copilot seats (`last_activity_at`) | — |
-| **T2** | Users, plus a separate events/log endpoint; usage is counted per user | Calendly (meetings hosted), HubSpot (login activity) | Label it as a **proxy** |
+| **T2** | Users, plus a separate events/log endpoint; usage is counted per user | Calendly (meetings hosted), Slack (last sign-in from the access logs), HubSpot (login activity) | Label it as a **proxy** |
 | **T3** | Users only; no usage on most plans | Notion public API, Asana (activity only via the Enterprise+ audit log) | **Fall back** to SSO last login, labelled "from SSO, not from the app" |
-| **Not supported yet** | No public API; docs behind a login; SOAP/XML; on-prem software; OAuth that needs a platform-registered app (e.g. Slack) | Many niche apps; Slack | Built by the platform team, or on the roadmap |
+| **Not supported yet** | No public API; docs behind a login; SOAP/XML; on-prem software; OAuth that needs the platform to register an app with the vendor (e.g. Google Workspace, Microsoft 365) | Many niche apps | Built by the platform team, or on the roadmap |
 
 **Fallback ladder when an app has no usage data:** SSO last login (data the platform already holds), then the platform's browser-extension signal, then an admin CSV upload (later).
 
@@ -190,21 +205,22 @@ Only the spec is different for each app. Every other step is the same for every 
 | Covered in v1 | Not yet covered |
 |---|---|
 | REST APIs that return JSON | GraphQL, SOAP/XML |
-| Login: bearer token, basic auth, API key header, OAuth client credentials | OAuth that needs the platform to register an app with the vendor (Slack, Google, Microsoft) |
+| Login: bearer token, basic auth, API key header, OAuth client credentials | OAuth that needs the platform to register an app with the vendor (Google, Microsoft, Slack's app install) |
 | Paging: none, cursor, next URL, Link header, offset/limit, page number | POST-based search endpoints |
 | Read calls only (GET; POST only to get a login token) | Usage APIs that need one call per user |
 | Usage from a field on the user, or by counting records from an events endpoint | Async report/CSV export APIs; apps with no API (browser automation) |
 
 **How much of the long tail fits?** We don't know yet. Phase 1 measures it on 30 apps (§13).
 
-### 5.4 Test apps for the prototype, and why
+### 5.4 Apps in the prototype, and why
 
-| App | Shape it proves | Why this app |
+| App | Shape it proves | In the prototype |
 |---|---|---|
-| **Zendesk** | T1: a last-login field on the user list; OAuth client credentials | A common help-desk app with a known trap (below) |
-| **Calendly** | T2: usage counted from separate event records | The assignment's own example |
-| **Notion** | T3: users only, with usage from the SSO fallback | Shows honest handling of "no usage data" |
-| **Surprise app** | Any app with no example spec and no app-specific code | Proves the engine is generic. Chosen from apps **not** listed on the platform's public integrations page, pasted live |
+| **Calendly** | T2: usage counted from separate event records | Built live with **Add an app** from its docs: the assignment's own example |
+| **Zendesk** | T1: a last-login field on the user list; OAuth client credentials | Sample app, connected on sample data |
+| **Notion** | T3: users only, with usage from the SSO fallback | Sample app; shows honest handling of "no usage data" |
+| **Slack** | T2: last sign-in from the access logs; owners, guests, bots and deactivated people | Sample app (146 users), with a token from the customer's own Slack app |
+| **Surprise apps** | Any app with no example spec and no app-specific code | Asana and Miro drafted live from their docs; Typeform shows how a build stops when an API can't list users |
 
 The platform already has native connectors for Zendesk, Calendly and Notion. That makes them useful here: they double as an **answer key**. The AI-built connector must match the user counts on each app's admin screen (and the platform's native connector, if the company can share those counts).
 
@@ -237,38 +253,32 @@ The platform already has native connectors for Zendesk, Calendly and Notion. Tha
 ### 6.1 The flow (any app)
 
 ```
-App list ─► Is App X in the library?
-              ├─ Yes ─► Paste token ─► Test ─► Savings ─► Live
-              └─ No  ─► Paste docs ─► AI fills spec ─► Auto checks ─► Admin reviews
-                        ─► Paste token ─► Templates write code ─► Test (auto-fix ≤3)
-                        ─► Savings ─► Live ─► Submit to library ─► Platform review
+App inventory ─► Add an app / Connect usage data ─► Docs link or OpenAPI file
+   ─► AI fills the spec ─► Automatic checks ─► Admin reviews
+   ─► Token (none on sample data) ─► Templates write code ─► Test (auto-fix ≤ 3)
+   ─► Savings ─► Live ─► App page: every user, with their own status
 ```
 
 1. **Start (F1).** In the app list, App X shows its spend, its renewal date and "No usage data". The admin clicks **Connect usage data**.
-   - **An app that isn't in the list yet** is added with **Add an app**. The admin gives its owner, annual spend, seats and renewal date, so it joins the inventory like every other app. **Save app** adds it without building; **Build with AI** goes on to step 3.
-2. **Library check (F2).**
-   - **If App X is in the library:** jump to step 7. The admin only pastes their own token.
-   - **If not:** go to step 3.
-3. **Docs (F2).** The admin gives App X's API docs link **or** its OpenAPI file: one of the two, never both. The link must be a full web address; whether it opens is checked when the build reads it. From a docs link the AI also finds the app's OpenAPI file if the docs point to one.
-4. **AI fills the spec (F3, live progress).** It answers the five questions in §5.1 and attaches a docs quote to every answer.
-5. **Automatic checks (no AI).**
-   - Every quote really exists in the docs.
-   - Only read calls.
-   - Only App X's own host.
-   - No secrets in URLs.
-   - If a check fails, the field is dropped and the AI is asked once more.
-6. **Admin review in plain words (F4).** For example: "Login: API token from an Admin, scopes X and Y. Users: yes. Usage: last login date." It comes with token setup steps. The buttons are **Looks right** and **This looks wrong**, which lets the admin add a hint.
-7. **Paste the token (F5).** The token is stored encrypted and never shown to the AI. If the admin doesn't hold the token, they click **Ask the app owner**, which makes a one-time link the app owner can use to paste a scoped token.
-8. **Code is generated.** Templates turn the spec into code. The same templates are used for every app.
-9. **Test run in a locked sandbox (F5).** It reads all users and a sample of usage, read-only, and can only reach App X's own host.
+   - **An app that isn't in the list yet** is added with **Add an app**. The admin gives its owner, annual spend, seats and renewal date, so it joins the inventory like every other app. **Save app** adds it without building; **Build with AI** goes on to step 2.
+2. **Docs (F2).** The admin gives App X's API docs link **or** its OpenAPI file: one of the two, never both. A link must be a full web address. From a docs link the AI also finds the app's OpenAPI file if the docs point to one.
+3. **AI fills the spec (F3, live progress).** It answers the five questions in §5.1 and attaches a docs quote to every answer. Docs that never name the app, pages with no API calls, or an API that can't list the company's users stop here with a plain message.
+4. **Automatic checks (no AI).**
+   - Every quote really exists in the docs, and the host, paths and rate limit it proves are on that page.
+   - Only read calls, only App X's own host, no secrets in URLs.
+   - A failed answer is asked once more; an optional field still unproved is dropped.
+5. **Admin review in plain words (F4).** For example: "Login: API token from an Admin, scopes X and Y. Users: yes. Usage: last login date." Each answer has a **Proved** badge that opens its quote. The buttons are **Looks right** and **This looks wrong**, which lets the admin add a hint.
+6. **Connect (F5).** The token is stored encrypted and never shown to the AI. On sample data no token is needed.
+7. **Code is generated.** Templates turn the spec into code. The same templates are used for every app.
+8. **Test run in a sandbox (F5).** It reads all users and a sample of usage, read-only, and can only reach App X's own host.
    - **Wrong URL, field or paging:** the AI fixes the spec and retries, up to 3 times.
-   - **Permission, scope or plan problem:** the admin gets a plain message, for example "This token needs the Admin role and scope X". There is no auto-fix.
+   - **Permission, scope or plan problem:** a plain message, for example "This token needs the Admin role and scope X". There is no auto-fix.
    - **Users work but usage is blocked:** the admin can go live with users only, clearly labelled.
-   - **Passed:** every user the code retrieved shows on App X's page (F9), with account status, last active date and usage.
-10. **Cross-check and savings preview (F6).** The users are compared with HRIS (who left), SSO (who is assigned) and the contract (seats bought). The screen shows: N users, X left the company, Y inactive, Z seats never assigned, and $ recoverable before the renewal. Every number shows its source.
-11. **Go live.** The admin confirms, and the connector syncs daily.
-12. **Library (F8).** Once the connector is live and healthy, the admin can **submit it to the library**. Customer-specific values are stripped, and a platform engineer reviews it before any other customer can see it.
-13. **Ongoing (F7, F8).** If App X changes its API, the connector shows **Needs repair** and keeps the last good data, marked stale. The AI proposes a fix, an engineer reviews it, and it rolls out to a canary group first, then to everyone.
+9. **Cross-check and savings preview (F6).** The users are compared with HRIS (who left), SSO (who is assigned) and the inventory (seats bought). The screen shows: N users, X left the company, Y inactive, Z seats nobody holds, and $ recoverable before the renewal. Every number shows its source.
+10. **Go live.** The admin confirms. App X's page (F9) lists every user the code retrieved, each with their own status (left the company, inactive, active) and the reason.
+11. **Delete app (F9).** An app added with Add an app can be deleted with everything built for it, and added again. A starting app can drop its connector and go back to "No usage data".
+
+**Next (§13):** a library check before building (if App X is already in the platform library, the admin only pastes a token), submitting to the library with platform review, an "Ask the app owner" link for the token, daily sync with drift detection, and repairs rolled out to a few customers first.
 
 ### 6.2 What the AI sees and never sees
 
@@ -279,7 +289,7 @@ App list ─► Is App X in the library?
 
 - **Evidence on every field.** Each spec field needs a docs quote (≤ 25 words) or an OpenAPI pointer, and code checks that it exists. The reason: research shows LLMs invent endpoint URLs up to 39% of the time when writing API code ([WAPIIBench](https://arxiv.org/abs/2509.20172)).
 - **Source ranking when docs disagree:** the vendor's API reference, then the vendor's OpenAPI file, then the vendor's guides, then third-party pages.
-- **Conflicts are shown, not hidden.** For example: "Rate limit: a third-party guide says 60/min; Calendly's rate-limit page says 500/min on paid plans and 50 on free. We used Calendly's page." This shows up as a chip in the evidence drawer (F4).
+- **Conflicts are shown, not hidden.** For example: "Rate limit: a third-party guide says 60/min; Calendly's rate-limit page says 500/min on paid plans and 50 on free. We used Calendly's page." This shows up in the evidence panel (F4).
 
 ### 6.4 What the generated code looks like (illustrative excerpt)
 
@@ -357,19 +367,20 @@ def get_users(c: Client) -> Iterator[dict]:
 
 ## 7. Screens (Deliverable 1: a clickable prototype instead of static Figma)
 
-**Decision:** we answer "Can you generate the Figma?" with the **clickable prototype's screens**. The panel can click through the real flow, and screenshots of each screen go into the submission. Plain language throughout; technical detail sits behind a toggle. Colours, type, components and screen layouts are in `DESIGN.md`.
+**Decision:** we answer "Can you generate the Figma?" with the **clickable prototype's screens**: the panel can click through the real flow at the live link. Plain language throughout; technical detail sits behind a tab, a panel or a toggle. Colours, type, components and screen layouts are in `DESIGN.md`.
 
 | Screen | What it shows | Key elements |
 |---|---|---|
 | **F1 App inventory** | Cards: annual spend, spend with and without usage data, next renewal. The app list: app, owner, annual spend, seats, renewal date, usage status (Connected / Users only / No usage data). Filter tiles (All / No usage data / Connected / Renewing in 90 days), an Owner filter, search, 10 per page | Badge "Renews in 58 days"; **+ Add an app**; a row opens the app page (F9); **Connect usage data** opens F2 |
-| **F2 Add an app / Connect usage data** | A drawer over the inventory. **Add an app:** app name, owner, renewal date, annual spend, seats, then the API docs link **or** an OpenAPI file. **Connect usage data** (a listed app): only the docs part. **In library** (hidden for now): "App X is in the platform library" → **Connect with your token** | **Save app** (inventory only) / **Build with AI**. A duplicate app is refused. Closing with unsaved input asks "Leave without saving?" (Discard / Save app) |
+| **F2 Add an app / Connect usage data** | A drawer over the inventory. **Add an app:** app name, owner, renewal date, annual spend, seats, then the API docs link **or** an OpenAPI file. **Connect usage data** (a listed app): only the docs part | **Save app** (inventory only) / **Build with AI**. A duplicate app is refused. Closing with unsaved input asks "Leave without saving?" (Discard / Save app) |
 | **F3 Build progress** | F3–F6 are one full-screen task with a step list on the left (Read the docs → Review → Connect and test → Savings → Go live). F3: the current step in plain words ("Step 2 of 4: Drafting the connector" and what that means), the time so far, a progress bar, what each step does, and an activity list with how long each step took. Usually 1 to 2 minutes | Plain error if the docs can't be read: "Upload the app's OpenAPI file or try another docs link". Leaving and coming back picks the progress up again |
 | **F4 What we found** | Plain summary cards: **Login** (type, role, exact scopes), **Users** (where they come from), **Usage** (tier badge, definition, "proxy" label), **Limits**, **Warnings**. A **Proved** badge beside each answer opens its quote and page; conflicts are explained there. A note says what our templates write instead of the AI (client, error handling, paging, logging) | Buttons: **Looks right** / **This looks wrong** (a hint, with examples of hints that help; the docs still decide) |
 | **F5 Connect + test** | Token instructions and a scope checklist (no token with sample data). Trust note: "Encrypted, read-only, never shared with the AI." A live test (Login ✓ Users ✓ Usage ✓ Mapping ✓), results (users, with activity, pages, requests), **what the generated code covers**: the assignment's six items, each ticked. Tabs: **Generated code** (the six items highlighted) and **Run log** (every request, never bodies or tokens) | Plain errors with the fix, e.g. "This token needs the Owner or Admin role and the scheduled_events:read scope" |
 | **F6 Savings preview** | 48 users · 6 left the company (HRIS) · 11 hosted no meetings in 90 days (proxy) · 60 seats bought, 12 never assigned · **$6,960 a year recoverable before the renewal on 26 Dec**. Every number shows its source. A deactivated account or a free guest is never counted as a seat to recover | Confirm → Go live → the app page. A mismatch with SSO over 2% needs a note |
-| **F7 Connector detail** | Status, last sync, runs, versions with diff, token owner + offboarding warning, **Download data card** (for security review), Generated code | "Needs repair" with the proposed fix |
-| **F8 Platform internal** | Hidden for now (§15). Library review queue (approve/reject), fleet health (used by N, failure rate, canary status), Opportunity Map (sample data) | Approve to library / approve repair |
-| **F9 App page** | One app from the inventory. Cards: users, active accounts, no activity in 30 days, seats paid for ("12 seats nobody holds"). Tabs: **Users** (every user the generated code retrieved: name or email, role, status, last active, usage with its label; search, status filter, 25 per page), **Connector** (status, data source, last test, users retrieved, tier, docs, version → F7), **Contract** (owner, spend, seats, price per seat, renewal) | This is where "code to retrieve users and usage data" is seen working. Before a connector has data: "No usage data yet" and the next step, never made-up numbers |
+| **F7 Connector detail** | Status, the last test run, what it reads (host, endpoints, paging, rate limit), details (version, login, role, scopes, token owner, evidence %), **Download data card** (for security review); **Generated code** and **Versions** tabs | **Continue setup** until live |
+| **F9 App page** | One app from the inventory. Cards: users, inactive (with the usage label), left the company (from HR data), seats paid for ("2 seats nobody holds"). Tabs: **Users** (every user the generated code retrieved: name or email, role, **status** = their own result: Left the company / Inactive / Active / Not in HR data, **why**, the app's own account status when its API gives one, last active, usage with its label; search, status filter, 25 per page), **Connector** (status, data source, last test, users retrieved, tier, docs, version → F7), **Contract** (owner, spend, seats, price per seat, renewal) | This is where "code to retrieve users and usage data" is seen working. **Delete app** for an added app, **Remove connector** for a starting app; both ask first. Before a connector has data: "No usage data yet" and the next step, never made-up numbers |
+
+The platform's internal view (review queue, fleet health, Opportunity Map) and the shared library are not in the prototype's screens (§13).
 
 ---
 
@@ -390,6 +401,8 @@ def get_users(c: Client) -> Iterator[dict]:
 | Reconnect needed | Token rejected | Stale only | A new token |
 | Paused | The admin paused it | Stale only | The admin resumes it |
 
+The prototype uses Draft, Testing, Needs help, Live and Live (users only); the others come with daily sync (§13).
+
 **The four risks that matter, and how we handle them**
 
 | Risk | Safeguards |
@@ -407,10 +420,12 @@ def get_users(c: Client) -> Iterator[dict]:
 5. **Publish static egress IPs**, so customers can restrict the token to the platform's IP addresses. Alert when call volume is far above normal.
 6. **One-click revoke** and an audit log. Each connector token is listed as a non-human identity in the platform's identity views.
 
+Built in the prototype: 1 to 4. Next: 5 and 6 (§13).
+
 **Also covered:**
 - **Prompt injection.** Docs are treated as untrusted input. The LLM only outputs a schema-bound spec, never holds a token, and the host rule blocks calls to anywhere else.
-- **The docs fetcher can't be used to reach internal systems (SSRF).** It only fetches http(s) URLs. It blocks private, loopback, link-local and cloud-metadata addresses, checks again after every redirect, and runs in its own sandbox.
-- **Minimal personal data.** Only the canonical user fields are stored. Raw API responses are never stored. User records are deleted 30 days after a connector is removed.
+- **The docs fetcher can't be used to reach internal systems (SSRF).** It only fetches http(s) URLs. It blocks private, loopback, link-local and cloud-metadata addresses, and checks again after every redirect.
+- **Minimal personal data.** Only the canonical user fields are stored. Raw API responses are never stored. **Delete app** removes a connector's user records at once.
 - **Scrubbed admin hints.** Hints are scrubbed before they reach the LLM (§6.2).
 - **Rate limits.** Paging stays below the documented rate limits. When the docs don't state one, we pace at 60 requests per minute.
 - **AI provider data use.** We use the Gemini API's **paid tier**: Google's pricing page says free-tier content is "used to improve our products" and paid-tier content is not ([Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing)).
@@ -426,10 +441,9 @@ def get_users(c: Client) -> Iterator[dict]:
 
 | Job | Model | Why |
 |---|---|---|
-| Draft the spec; repair tries 1–2 | `gemini-3.8-flash` (stable) | Fast and low-cost; JSON-Schema-constrained output |
-| Repair try 3 (the last); very large or messy docs | `gemini-4-argon` (stable, Google's flagship reasoning model, 1,048,576-token context) | Strongest reasoning for the hardest step |
+| Draft the spec, and every repair try | `gemini-4-argon` (stable, Google's flagship reasoning model, 1,048,576-token context) | The only model in the benchmark that got every app right, with no repairs (below) |
 
-Both sit behind an `LLMClient` interface, so changing the model or the provider (for example Claude or OpenAI) is a config change.
+It sits behind an `LLMClient` interface, so changing the model or the provider (for example Claude or OpenAI) is a config change. Until 1 Nov the prototype drafted with `gemini-3.8-flash` and kept Argon for the last repair try; the benchmark changed that.
 
 **Why Gemini fits this job:**
 1. **Long context.** A whole API reference fits in one request.
@@ -451,11 +465,19 @@ The model cost is tiny next to 30–60 minutes of engineer review. So **we choos
 - spec valid;
 - evidence quotes verified;
 - sandbox test passes;
-- user count matches the app's admin screen;
+- the users match the hand-written spec's on the same recording;
 - repairs needed;
 - real $ and seconds.
 
-The full eval (metrics, targets, method) is in `EVAL.md` §2. The headline slide is one line: "We use X: N/9 passed, R repairs, $Y per connector." The defaults above change if the benchmark says so.
+**Result (1 Nov 2026, live Gemini, paid tier):**
+
+| Model | Tests passed | Right users | Evidence verified | Avg repairs | Avg $ per connector | Avg seconds |
+|---|---|---|---|---|---|---|
+| `gemini-3.5-flash-lite` | 2 of 9 | 2 of 9 | 72% | 2.0 | $0.12 | 42 |
+| `gemini-3.8-flash` | 7 of 9 | 4 of 9 | 100% | 0.7 | $0.13 | 46 |
+| **`gemini-4-argon`** | **9 of 9** | **9 of 9** | 100% | **0** | $0.23 | 50 |
+
+**We use `gemini-4-argon`: 9 of 9 passed, no repairs, $0.23 per connector** ($0.46 after its 1 Dec price change). `gemini-3.8-flash` was right on Calendly every time, but failed Zendesk 2 of 3 times and returned the wrong set of Notion users every time. The cheaper models save about 10 cents a connector, which is nothing next to an engineer fixing a wrong one. The full eval (metrics, targets, method, details) is in `EVAL.md` §2.
 
 **Before production:** a 30-app backtest (10 per tier) against the platform's native connectors, plus one non-Gemini model for comparison.
 
@@ -517,10 +539,10 @@ All numbers below are **assumptions to replace with the company's real data**. T
 
 | Phase | What | Gate to move on |
 |---|---|---|
-| 0 Prototype | Generic engine; Zendesk, Calendly, Notion + a surprise app; Slack sample connector; library with review (built, hidden from the screens for now: §15); savings preview; 27-draft model benchmark | Counts match the admin screens on all 3 apps; security tests pass; benchmark done |
-| 1 Internal build team | Builds long-tail connectors from the Opportunity Map; 30-app backtest; final model choice; data cards; a second allowed host for the OAuth token call only (Zoom signs in at zoom.us, reads at api.zoom.us) | Backtest score agreed with the company |
-| 2 Customer beta | Self-serve for library + new builds (T1–T3); renewal trigger; fleet health; token governance | Beta targets in §11 met; customer security reviews signed off |
-| 3 GA | Platform-registered OAuth apps (Slack etc.); POST-search and GraphQL reads with review; one-call-per-user usage; bulk OpenAPI import; connector data through the platform's MCP server | Read-only data trusted across customers |
+| 0 Prototype (**built**, 1 Nov 2026) | Generic engine: Add an app → AI build → review → test → savings → live; the app page with each person's status; Delete app; Zendesk, Notion and Slack on sample data; Calendly and surprise apps built from their docs; the 27-draft benchmark; hosted on Vercel with Neon Postgres | Counts match each app's admin screen with real accounts (waits on vendor tokens) |
+| 1 Internal build team | Shared library with platform review, and a second company connecting with its own token (a first version is in the code, not on screen); Opportunity Map; 30-app backtest; final model choice; a locked container per test run; daily sync with drift detection → Needs repair; an "Ask the app owner" link for the token; a second allowed host for an OAuth token call (Zoom signs in at zoom.us, reads at api.zoom.us); data cards in the review | Backtest score agreed with the company |
+| 2 Customer beta | Self-serve for library + new builds (T1–T3); renewal trigger; fleet health; repairs rolled out to a canary group first; token governance (static egress IPs, one-click revoke, audit log) | Beta targets in §11 met; customer security reviews signed off |
+| 3 GA | Platform-registered OAuth apps (Google, Microsoft, Slack's app install); POST-search and GraphQL reads with review; one-call-per-user usage; bulk OpenAPI import; connector data through the platform's MCP server | Read-only data trusted across customers |
 | 4 Beyond read | Remove or downgrade seats with approvals; feature-level usage; apps with no API via browser automation | — |
 
 ---
@@ -545,37 +567,11 @@ All numbers below are **assumptions to replace with the company's real data**. T
 - [ ] Can the company share user counts from its native Zendesk, Calendly and Notion connectors for the backtest?
 - [ ] Do any vendors' API terms limit sharing connector specs?
 
-**Validation still to do (before the panel):** 3–5 short conversations with IT, procurement and security buyers. Questions:
+**Validation plan:** 3–5 short conversations with IT, procurement and security buyers. Questions:
 - "Would you paste an admin token into an AI-built connector? What would your security team need?"
 - "How do you define 'inactive'?"
 
 Their answers replace the assumptions above.
-
----
-
-## 15. 5-minute demo script
-
-> **Prototype screens today: one customer (Acme).** The tenant switcher, the Library and the platform review queue are built in the engine but hidden from the screens, so the demo stays on what the assignment asks. They come back next (the beat after the table).
-
-**Setup.**
-- **Acme** runs on **demo data**: recorded API responses for a fake 48-person company, clearly labelled on screen. This gives realistic savings numbers.
-- **Globex**, a second tenant on a real Calendly account, is hidden with the tenant switcher for now.
-- Acme's inventory: **Zendesk**, **Notion** and **Slack** are already connected on sample data (tagged "Sample data"), so their app pages show realistic users from the start: Zendesk 37 agents (T1, last login), Notion 87 members (T3, SSO fallback), Slack 146 accounts with owners, admins, guests and deactivated people (T2, last sign-in from the access logs). They were built from hand-written specs and tested by the same engine on recorded answers, so the users on those pages were really pulled by generated code. **Zoom** stays "No usage data": its login server is a different host from its API, and our one-host rule doesn't allow that yet (§13).
-- **Calendly is not in the list.** The demo adds it live with **+ Add an app**. (The platform does have a native one; we use Calendly because it is the assignment's example, and the native connector is our answer key.)
-
-| Time | Beat |
-|---|---|
-| 0:00–0:30 | **Acme inventory:** three apps already connected on sample data; open Slack's page to show what "connected" looks like. Then **+ Add an app**: Calendly, Marketing Ops, $14,400, 60 seats, renews 26 Dec 2026, docs link → **Build with AI** |
-| 0:30–1:30 | The build runs live (about 1.5 minutes): each step says what it is doing. **What we found:** T2, Owner/Admin + 3 scopes, usage = meetings hosted (90 days, proxy). Click a **Proved** badge to show its quote |
-| 1:30–2:15 | Paste the token. Open the **Generated code** tab and point to the six items. The test passes |
-| 2:15–3:00 | **Savings preview:** 48 users · 6 left · 11 inactive · 12 seats never assigned · **$6,960/yr before 26 Dec**. Confirm → Live |
-| 3:00–3:45 | **App page:** click Calendly in the inventory → 48 users with status, last active and meetings hosted, straight from the generated code (search "aarav", filter by status). Then **+ Add an app**: name, owner, spend, seats, renewal date, docs link → **Save app**; it appears in the list and the cards |
-| 3:45–4:30 | **Surprise app:** paste the docs of an app the builder has never seen → spec drafted → test |
-| 4:30–5:00 | **Safety and model:** a blocked prompt-injection doc and a blocked DELETE call, then the benchmark table ("We use X: N/9 passed, $Y per connector") |
-
-**Next (hidden for now):** submit to library → the **platform internal** view → approve → **Globex** (live) sees Calendly "In library", pastes its own token; its own test runs; live with real data.
-
-**Screenshots:** a script clicks through the same run and saves every screen (`prototype/scripts/demo-walkthrough.mjs`); they answer the assignment's "Can you generate the Figma?" alongside the live prototype.
 
 ---
 
@@ -621,6 +617,7 @@ Opened or checked on 29 Oct 2026. API paths should be re-checked against vendor 
 - **Atlassian:**
   - [JRACLOUD-97537](https://jira.atlassian.com/browse/JRACLOUD-97537)
   - [Last-active dates endpoint](https://developer.atlassian.com/cloud/admin/organization/user-last-active-dates)
+- **Slack:** [users.list](https://api.slack.com/methods/users.list), [team.accessLogs](https://api.slack.com/methods/team.accessLogs)
 - **Asana:** [Audit log events](https://developers.asana.com/docs/audit-log-events)
 - **HubSpot:** [Account activity API](https://developers.hubspot.com/docs/api-reference/latest/account/audit-logs/guide)
 - **Gemini:**
@@ -632,4 +629,3 @@ Opened or checked on 29 Oct 2026. API paths should be re-checked against vendor 
 - **Research and incidents:**
   - [WAPIIBench: LLM API hallucinations](https://arxiv.org/abs/2509.20172)
   - [Salesloft Drift breach](https://www.secureworld.io/industry-news/salesloft-drift-breach-salesforce-data)
-  - [Gainsight incident](https://www.techradar.com/pro/security/google-security-experts-say-gainsight-hacks-may-have-left-hundreds-of-companies-affected)

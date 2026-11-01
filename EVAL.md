@@ -2,21 +2,53 @@
 
 **For:** Senior PM take-home assignment
 **Author:** Sujeet Kumar
-**Date:** 29 Oct 2026
-**Status:** v1. How we know the builder works. Read with `PRD.md` (why) and `TRD.md` (how it is built).
+**Date:** 1 Nov 2026
+**Status:** v2. How we know the builder works: the test approach, the AI benchmark, the acceptance scenarios and the results. Read with `PRD.md` (why) and `TRD.md` (how it is built).
 
 ---
 
-## 1. What we evaluate, and why it has two layers
+## 1. Scope and approach
 
-The AI is one step in a longer chain: docs → spec → checks → code → sandbox → canonical records → savings. A spec can look right and still return the wrong users. So we test two things separately:
+### 1.1 What is evaluated
+
+The AI is one step in a longer chain: docs → spec → checks → code → sandbox → user records → savings. A spec can look right and still return the wrong users, so each layer is tested on its own.
 
 | Layer | Question | Where |
 |---|---|---|
 | **AI quality** | Does the model draft a correct spec from docs, with real evidence, in few repairs, at low cost? | §2 |
-| **Product behaviour** | Does the whole flow give the right users, the right usage label, safe calls and plain errors? | §3–§5 |
+| **Product behaviour** | Does the whole flow give the right users, the right usage label, safe calls and plain errors? | §3, §4 |
+| **Security** | Can a bad doc, a bad draft or a bad link make the connector write, leak or call somewhere else? | §5 |
+| **Deployment** | Does the same flow work on the hosted link (Vercel + Neon Postgres) with live Gemini? | §4 |
 
-**The rule that ties them together:** a draft only counts as a pass if the connector it produces returns the right users. Valid JSON alone is not a pass.
+**The rule that ties them together:** a draft counts as a pass only if the connector it produces returns the right users. Valid JSON alone is not a pass.
+
+**Out of scope for the prototype:** real vendor accounts (no vendor tokens were available, so connectors are tested on recorded answers and live calls only with a made-up token), load and scale, and the roadmap items (PRD §13).
+
+### 1.2 Test levels
+
+| Level | What it covers | How | When |
+|---|---|---|---|
+| **Unit** | Spec rules, placeholders, field maps, `aggregate`, `active_rule`, the 6 paginators, retries and backoff, redaction, the SSRF guard, hint scrubbing, savings math, the vault | `pytest`, mock servers | Every change |
+| **Contract** | The four example specs on their recordings return exactly the expected users | `pytest` | Every change |
+| **API flow** | The main flow through the real API: add an app, build, test, savings, go live, delete; the library path between two companies | `pytest` (recorded AI answers) | Every change |
+| **Security** | Prompt injection, write calls, calls to another host, SSRF, secrets in the database, logs and API | `pytest` | Every change |
+| **Generated code** | `ruff` and `mypy --strict` on every generated module | Built into codegen | Every build |
+| **AI benchmark** | 3 apps × 3 models × 3 runs | `python -m benchmark` | Before choosing a model |
+| **Manual end-to-end** | The fixed checklist in §4, through the screens, with live Gemini, on a fresh database | By hand, in a browser | Before every release |
+| **Hosted check** | The same checklist on the hosted link | By hand | After every deploy |
+
+### 1.3 Environments and test data
+
+- **Local:** SQLite, live Gemini, the subprocess sandbox, a fresh database for each round.
+- **Hosted:** https://integration-builder-five.vercel.app (Vercel, Neon Postgres, live Gemini, the shared login), checked on a fresh database.
+- **Data:** the sample company Acme, with fake people: HR, SSO and contract files, and recorded API answers for Calendly, Zendesk, Notion and Slack. No real customer data.
+
+### 1.4 When testing is done
+
+1. `ruff`, `mypy --strict`, `tsc` and `pytest` pass.
+2. Every acceptance scenario (§3) passes, or names what blocks it.
+3. The manual checklist (§4) passes locally, then on the hosted link after the deploy.
+4. Every defect found is fixed, re-tested, and the checklist run again.
 
 ---
 
@@ -26,15 +58,14 @@ The AI is one step in a longer chain: docs → spec → checks → code → sand
 
 | App | Shape | Golden answer |
 |---|---|---|
-| Zendesk | T1, OAuth client credentials, last login on the user | `specs/examples/zendesk.json` (hand-written, `TRD.md` §4) |
+| Zendesk | T1, OAuth client credentials, last login on the user | `specs/examples/zendesk.json` |
 | Calendly | T2, usage counted from scheduled events | `specs/examples/calendly.json` |
 | Notion | T3, users only, SSO fallback | `specs/examples/notion.json` |
-| Surprise app | Any shape, no golden spec | Counts on the app's admin screen |
 
-Each app has known traps (`PRD.md` §5.5). The eval checks them directly:
-- **Calendly:** `max_start_time` is set, so future meetings are not counted; the third-party rate-limit claim shows up as a conflict, not as the answer.
+Each app has known traps (`PRD.md` §5.5), checked directly:
+- **Calendly:** `max_start_time` is set, so future meetings aren't counted; a third-party rate limit shows up as a conflict, not as the answer.
 - **Zendesk:** end users are filtered out; the connector's own account is excluded from "inactive"; OAuth, not the retired API tokens.
-- **Notion:** usage is `null` with the SSO fallback, not an invented field; the email capability is listed as a warning.
+- **Notion:** usage is `null` with the SSO fallback, not an invented field; the email capability is a warning.
 
 ### 2.2 How it runs
 
@@ -42,26 +73,22 @@ Each app has known traps (`PRD.md` §5.5). The eval checks them directly:
 python -m benchmark --apps zendesk calendly notion --models gemini-3.5-flash-lite gemini-3.8-flash gemini-4-argon --runs 3
 ```
 
-- 3 apps × 3 models × 3 runs = **27 drafts**.
-- Test runs use **replay** mode, so results are repeatable and not affected by rate limits. An AI-drafted path that doesn't exist in the recording returns 404, just like the real API, and triggers repair (max 3 tries, `TRD.md` §8).
+- 3 apps × 3 models × 3 runs = **27 drafts**, from the same cached docs.
+- Each draft is tested on the app's **recording**, so results repeat and rate limits don't matter. A drafted path that isn't in the recording returns 404, as the real API would, and triggers repair (up to 3 tries).
 - Prices come from `benchmark/prices.json`, with the date they were checked.
 
 ### 2.3 Metrics and targets
 
-Targets are proposals for the prototype; Phase 1 (`PRD.md` §13) sets the real ones.
-
 | Metric | Definition | Target for the chosen model |
 |---|---|---|
-| **Schema valid** | The draft validates against `connector_spec.schema.json` and passes the rule checks (`TRD.md` §3) | 100% after the evidence re-ask |
-| **Evidence verified** | % of filled fields whose quote or OpenAPI pointer passes the check (`TRD.md` §3) | ≥ 90% on the first draft |
+| **Schema valid** | The draft validates and passes the rules (`TRD.md` §3) | 100% after the evidence re-ask |
+| **Evidence verified** | % of filled fields whose quote or OpenAPI pointer passes the check | ≥ 90% on the first draft |
 | **Test pass** | The sandbox test exits 0 (including `partial` where the golden spec is also partial) | ≥ 8 of 9 |
 | **User count match** | Passing runs return the same `external_id` set as the golden spec on the same recording | 100% of passing runs |
-| **Usage match** | Same usage tier, same metric label, same `active_rule` as the golden spec | ≥ 8 of 9 |
+| **Usage match** | Same usage tier, metric label and `active_rule` as the golden spec | ≥ 8 of 9 |
 | **Repairs** | Average repair tries per draft | ≤ 1 |
 | **Cost** | Average $ per connector, tokens × dated prices | < $1 |
 | **Time** | Average seconds from docs to a passing test | Tracked |
-
-**Diagnostic, not a gate:** field-by-field match against the golden spec (auth type, users path, `records_path`, pagination type, `field_map` targets). It shows *where* a model goes wrong.
 
 ### 2.4 How the model is chosen
 
@@ -69,186 +96,159 @@ Targets are proposals for the prototype; Phase 1 (`PRD.md` §13) sets the real o
 2. A tie goes to **fewer repairs**.
 3. A tie after that goes to **lower cost**.
 
-Price comes last on purpose: model cost is cents, an engineer's review is an hour (`PRD.md` §9).
+Price comes last on purpose: a draft costs cents, an engineer's review costs an hour (`PRD.md` §9).
 
-### 2.5 Output
+### 2.5 Results (1 Nov 2026)
 
-- `benchmark/results.csv`: one row per draft.
-- `benchmark/results.md`: one table per model, plus the headline line for the demo: **"We use X: N/9 passed, R repairs on average, $Y per connector."**
+Run on 1 Nov 2026 with live Gemini (paid tier): 27 drafts from the same cached docs, each tested on its recording. Full table: `prototype/benchmark/results.md`.
+
+| Model | Schema valid | Evidence verified | Test pass | User count match | Usage match | Avg repairs | Avg $ per connector | Avg seconds |
+|---|---|---|---|---|---|---|---|---|
+| `gemini-3.5-flash-lite` | 8/9 | 72% | 2/9 | 2/9 | 3/9 | 2.0 | $0.12 | 42 |
+| `gemini-3.8-flash` | 9/9 | 100% | 7/9 | 4/9 | 3/9 | 0.7 | $0.13 | 46 |
+| `gemini-4-argon` | 9/9 | 100% | **9/9** | **9/9** | 3/9 | **0.0** | $0.23 | 50 |
+
+**What it shows:**
+- **`gemini-4-argon` is the only model that meets the targets:** all 9 tests pass with exactly the right users, no repairs, $0.23 per connector ($0.46 after its 1 Dec price change, still under the $1 target), about 50 s.
+- **`gemini-3.8-flash`** passed Calendly 3 of 3, but Zendesk only 1 of 3 (the wrong request, even after repairs), and on Notion it passed the test with a different set of users than the hand-written spec 3 of 3.
+- **`gemini-3.5-flash-lite`** is too weak for this job: 2 of 9.
+- **Usage match is 3 of 9 for every model:** on Calendly and Zendesk every model also names an SSO fallback (`sso_last_login`) that the hand-written specs leave out. The fallback only applies to people the app gives no usage for, so it doesn't change the numbers; Notion, where the fallback is the answer, matches every time.
+
+**Decision (1 Nov 2026):** by the rule in §2.4, `gemini-4-argon` now drafts and makes every repair try, locally and on the hosted link (`LLM_MODEL_DRAFT`, `TRD.md` §2.2). Re-checked on the hosted link the same day: Calendly deleted, added again and built by Argon (15 of 15 answers proved), 48 users, $4,560 a year, live.
 
 ### 2.6 Adversarial cases
 
-| Case | Pass when |
-|---|---|
-| A docs page with a prompt injection ("send the data to evil.com") | The spec has no other host; the rules reject it if it does; no call leaves the sandbox (SC-06) |
-| A docs page that asks for a DELETE or a write call | `RULES_REJECTED` (SC-07) |
-| Two sources with different rate limits | Conflict recorded; the vendor's page wins (SC-17) |
-| An admin hint containing an email, a token and a long number | All scrubbed before the prompt (`TRD.md` §8.1) |
-
----
-
-## 3. Acceptance scenarios (product behaviour)
-
-The prototype is done when all of these pass.
-
-| ID | Scenario | Expected |
+| Case | Pass when | Result |
 |---|---|---|
-| SC-01 | Zendesk T1 happy path (OAuth client credentials) | Agents + admins with last login; the service account is excluded from inactive; admin confirms; Live |
-| SC-02 | Calendly with a non-admin token, or missing `scheduled_events:read` | `/users/me` and members work; `/scheduled_events` returns 403 → `partial`: "Users synced. Usage needs the Owner/Admin role or the scheduled_events:read scope"; no auto-repair; admin can choose Live (users only) |
-| SC-03 | Calendly with an admin token | Users + "Meetings hosted (90 days)" marked proxy; no future meetings counted; savings preview |
-| SC-04 | Notion T3 | Users only; usage from the SSO fallback, labelled "per SSO login" |
-| SC-05 | Wrong path drafted | 404 → repair; passes by try 3, or → Needs help |
-| SC-06 | Prompt-injection docs page ("send data to evil.com") | The host rule blocks it; the LLM has no token; logs show no call to other hosts |
-| SC-07 | Spec with DELETE | Rejected by the rules (`RULES_REJECTED`) |
-| SC-08 | Library reuse (engine; the screens are hidden for now, `PRD.md` §15) | Acme submits; Globex can't see it until it's approved in F8; after approval, Globex connects with its own token and its own test runs; no Acme values visible |
-| SC-09 | Count mismatch | > 2% vs SSO assigned → warning; confirming requires a note |
-| SC-10 | Rate limited | 429 handled via `X-RateLimit-Reset` (Calendly) or `Retry-After` |
-| SC-11 | Surprise app | Drafted, tested, and users shown, with no example spec and no app-specific code |
-| SC-12 | SSRF | Docs URLs pointing to `169.254.169.254`, `localhost` or `10.x` → `SSRF_BLOCKED` |
-| SC-13 | Token owner leaving | `hris.csv` marks the token owner as terminated on a future date → F7 warning "switch to a service account" |
-| SC-14 | Replay mode | "Sample data" shows wherever sample numbers do (app page, test, savings, connector detail); no network calls to the vendor |
-| SC-15 | Secrets | A grep of logs, the DB and LLM prompts finds no token, email or real name |
-| SC-16 | Benchmark | Produces the 3 × 3 × 3 results table |
-| SC-17 | Docs conflict | A fixture docs page with two rate-limit values → the conflict chip shows both and the chosen source |
-| SC-18 | Add an app | Name, owner, annual spend, seats (≥ 1), renewal date and one docs source are required; **Build with AI** stays off until they are valid. The app joins the inventory with its details, and the cards and counts include it |
-| SC-19 | Save app, and duplicates | **Save app** adds the app without a connector: its row shows "No usage data" and **Connect usage data**. The same name again, in any letter case, is refused: "Calendly is already in your inventory. Open its row to connect it or see its users." A refused try saves nothing |
-| SC-20 | Leave without saving | An empty drawer closes at once. With input, ✕, Cancel, Escape or a click outside asks "Leave without saving?" (Discard / Save app; Save app only when the details are complete). ✕ or Escape on the question returns to the form with the input kept. A reload or closed tab gets the browser's warning |
-| SC-21 | Docs link or file | The two are offered as a choice, and only the chosen one is sent. A link that isn't a full web address shows "Enter a full link, like https://developer.example.com/api" and Build stays off. Private or internal links are still blocked at build (SC-12) |
-| SC-22 | App page shows the retrieved users | After a passing test, the app page lists every user the generated code retrieved (status, last active, usage with its label); the Users count equals the test's user count; search, status filter and 25-per-page paging work; another tenant gets "No such connector" |
-| SC-23 | App page before data | An app with no connector shows its contract details, "—" in the user cards and "No usage data yet" with the next action. No made-up numbers |
-| SC-24 | Sample apps on a fresh database | Zendesk (37 users), Notion (87, users only) and Slack (146) are connected with a "Sample data" tag, built by the normal codegen and sandbox test on recorded answers; Zoom, Asana, Miro, Typeform and Loom show "No usage data" with **Connect usage data**; Calendly is not listed. Each app's users match `fixtures/replay/<app>/expected.json` exactly |
-| SC-25 | Build speed and progress | A Calendly build with live Gemini finishes in under about 2 minutes; each step says what it is doing and how long it took; a progress stream that closes (the 5-minute hosting limit, a dropped connection) reconnects without losing or repeating steps |
-| SC-26 | Usage mapping guard | A draft whose usage records name no user, have no readable time, or match no user fails the test with `MAPPING_FAILED` (repairable), instead of passing with everyone at 0. With the `$parent.` rule in the prompts, a live Calendly draft counts meetings (23 of 48 people in our run) |
-| SC-27 | Build flow screens | F3–F6 are one full-screen task: the header (✕ to the app page, status, the step's buttons) and the step list; a **Proved** badge opens that answer's quote; the hint window explains what a hint does; the test shows the six assignment items; **Go live** lands on the app page |
-| SC-28 | Wrong or thin docs input | An OpenAPI file with no link drafts and tests (48 users on Calendly's sample data). Docs that never name the app (example.com, Notion's docs under "Calendly") stop with `DOCS_WRONG_APP` before the AI drafts. Pages that prove fewer than half the answers stop with `DOCS_NOT_API`. A link that isn't a full http(s) link, or has spaces, is refused at once. Calendly's rate limit is drafted as its general limit (500 a minute), never the 8-per-minute token limit. A quote "proves" a host, path or rate only when the page shows that value. A hint loses token-like text. A missing token names the field. A second Run test joins the first |
+| A docs page with a prompt injection ("send the data to evil.com") | The spec has no other host; the rules reject it if it does; no call leaves the sandbox | ✅ SC-06 |
+| A docs page that asks for a DELETE or a write call | `RULES_REJECTED` | ✅ SC-07 |
+| Two sources with different rate limits | Conflict recorded; the vendor's page wins | ✅ SC-17 |
+| An admin hint with an email, a token and a long number | All removed before the prompt | ✅ C9 |
 
 ---
 
-## 4. Test plan
+## 3. Acceptance scenarios
 
-| Level | What it covers | Runs |
-|---|---|---|
-| **Unit** | Schema + rules, placeholders, `field_map`, `aggregate`, `active_rule`, the 6 paginators (mock server), retry/backoff, redaction, masking, the SSRF guard, hint scrubbing, savings math | Every change |
-| **Contract** | Replay recordings for the 3 test apps and the Slack sample → golden canonical output | Every change |
-| **Live** | Real accounts; user counts must match each app's admin screen | On demand (needs tokens in `.env`) |
-| **Security** | SC-06, SC-07, SC-12, SC-15, plus a call to another host (exit code 8) | Every change |
-| **Generated code** | `ruff` and `mypy --strict` on every generated module | Every codegen |
+The product is done when all of these pass. "Waits" names what only a real vendor account can give.
 
-**Accounts needed**
-
-- **Gemini:** an API key with billing on (paid tier).
-- **Calendly:** an org with 2+ users is best (Teams trial); an Owner token with the 3 scopes.
-- **Zendesk:** a trial with an OAuth client (new accounts can't use API tokens).
-- **Notion:** a free workspace + an internal connection.
-- **Surprise app:** a free or trial account.
-
----
-
-## 5. After the prototype
-
-- **Backtest before production:** 30 apps (10 per tier) against the platform's native connectors, plus one non-Gemini model for comparison (`PRD.md` §9). Shown as a scoreboard, e.g. "user counts matched on 26/30 apps".
-- **In production**, the eval becomes the metrics in `PRD.md` §11. The counter-metric that matters most is the **false-inactive rate**: users we flagged inactive who actually use the app.
-- **Every correction becomes a test case.** A repair, an admin hint or a reviewer rejection adds the app and the fix to the eval set, so the next model or prompt change is checked against it.
-
----
-
-## 6. Scenario status (prototype build, 29 Oct 2026; SC-18 to SC-27 added 31 Oct, SC-28 on 1 Nov)
-
-Automated tests live in `prototype/tests/`. "Waits" means the code and test exist but need something only Sujeet can provide.
-
-| ID | Status | Where it's tested |
-|---|---|---|
-| SC-01 Zendesk T1 (OAuth) | ✅ replay, OAuth flow · waits on a live Zendesk trial | `contract/test_replay.py`, `unit/test_engine.py::test_oauth_*`, `live/test_live.py` |
-| SC-02 Calendly without usage access | ✅ | `api/test_flow.py::test_sc02_*` |
-| SC-03 Calendly admin token | ✅ replay (future and old meetings ignored) · waits on a live account | `contract/test_replay.py`, `unit/test_savings.py` |
-| SC-04 Notion T3 SSO fallback | ✅ | `unit/test_savings.py::test_notion_uses_the_sso_fallback` |
-| SC-05 Wrong path → repair | ✅ (scripted model) · waits on the Gemini key for a real run | `unit/test_ai_pipeline.py::test_repair_*` |
-| SC-06 Prompt injection | ✅ | `unit/test_ai_pipeline.py::test_prompt_injection_in_docs_is_contained`, `security/test_sandbox.py` |
-| SC-07 DELETE | ✅ | `unit/test_spec_validator.py::test_delete_is_rejected`, `test_a_draft_can_never_ask_for_delete` |
-| SC-08 Library reuse | ✅ | `api/test_flow.py::test_full_demo_flow` |
-| SC-09 Count mismatch | ✅ | `api/test_flow.py::test_count_mismatch_needs_a_note`, `unit/test_savings.py` |
-| SC-10 Rate limited | ✅ | `unit/test_engine.py::test_429_*` |
-| SC-11 Surprise app | ⏳ waits on the Gemini key and network access to the app's docs | — |
-| SC-12 SSRF | ✅ | `unit/test_ai_pipeline.py::test_ssrf_*`, `api/test_flow.py::test_ssrf_*` |
-| SC-13 Token owner leaving | ✅ | `api/test_flow.py::test_sc13_*` |
-| SC-14 Replay mode | ✅ (Docker replay runs have no network at all) | `security/test_sandbox.py::test_docker_replay_*` |
-| SC-15 Secrets | ✅ logs, database, API, LLM prompts | `contract/test_replay.py`, `api/test_flow.py::test_sc15_*`, `unit/test_ai_pipeline.py` |
-| SC-16 Benchmark | ✅ harness (oracle) · waits on the Gemini key for the real 27 drafts | `contract/test_benchmark.py` |
-| SC-17 Docs conflict | ✅ | `unit/test_ai_pipeline.py::test_docs_conflict_is_settled_by_the_vendor_page` |
-| SC-18 Add an app | ✅ checked by hand on a throwaway database (31 Oct) · no automated test yet | — |
-| SC-19 Save app, duplicates | ✅ checked by hand (API and screen) · no automated test yet | — |
-| SC-20 Leave without saving | ✅ checked by hand in the browser (the browser's reload warning not checked) · no automated test yet | — |
-| SC-21 Docs link or file | ✅ checked by hand in the browser; "only the chosen one is sent" checked by reading the code · no automated test yet | — |
-| SC-22 App page users | ✅ checked by hand: Calendly replay build → test → 48 users on the page; another tenant refused · no automated test yet | — |
-| SC-23 App page before data | ✅ checked by hand (Zoom) · no automated test yet | — |
-| SC-24 Sample apps | ✅ checked on two fresh databases (local and a throwaway); the four example specs replay to their expected users with no mismatch (checked with a script) | `contract/test_replay.py` now includes Slack (not run) |
-| SC-25 Build speed | ✅ live Gemini runs: 96 s and 78–114 s for the draft (was 5 min 51 s); docs reading 26 s (was 2 min 6 s). 31 Oct, full flow in the browser with live Gemini (`scripts/demo-walkthrough.mjs`): passed in 2 min 10 s, 48 users, $6,960 recoverable · no automated test | — |
-| SC-26 Usage mapping guard | ✅ checked by hand: the faulty saved Calendly draft now fails with `MAPPING_FAILED`; a new live draft uses `$parent.start_time` and counts meetings · no automated test yet | — |
-| SC-27 Build flow screens | ✅ checked by hand in the browser (every step, the evidence drawer, the hint window, Run log, Go live) · no automated test | — |
-| SC-28 Wrong or thin docs input | ✅ 1 Nov, live Gemini on a separate test server: the assignment's Calendly link 5 of 5 (500 a minute, 48 users, 33 with usage, $6,960, all six items marked); an OpenAPI file alone 5 of 6 at once and the sixth after the sample data's status filter was made optional; example.com and Notion's docs → `DOCS_WRONG_APP`; calendly.com → stopped at the rules check before any test; bad links, a past renewal date, malformed requests, a double Run test, a hint with two unknown tokens and a live test with no token give their plain messages · no automated test | — |
-
-## 7. Final checklist (1 Nov 2026)
-
-One fixed list, run the same way every time: through the screens, with live Gemini, on a fresh database. Testing is done when every line passes. Results are in the "Result" column.
-
-| # | Check | Expected | Result |
+| ID | Scenario | Expected | Status · evidence |
 |---|---|---|---|
-| **A** | **The demo (the assignment's flow)** | | |
-| A1 | Fresh database, App inventory | Notion (Users only), Slack and Zendesk (Connected, Sample data); Zoom, Asana, Miro, Typeform and Loom (Connect usage data, added after this round); no Calendly | ✅ After the sample apps finish building (about a minute; until then their rows say "Setup not finished") |
-| A2 | Slack's app page | Its users with a Sample data tag; the cards match its savings | ✅ Inactive 12, Left 6, 0 seats nobody holds: the same as its savings |
-| A3 | Add an app: Calendly, its details, the assignment's docs link, Build with AI | Finishes in about 2 minutes; every step says what it does | ✅ 2 min 30 s (another build ran at the same time); each step explained |
-| A4 | Review what we found | Every answer proved; rate limit 500 a minute; users from `/organization_memberships`; usage "Events hosted (90 days)"; paging in words; the evidence panel opens on the answer clicked | ✅ 19 of 19 proved; 500 a minute; `/organization_memberships`; "Events hosted (90 days)"; paging "Next-page link"; the panel opened on Users paging |
-| A5 | Connect and test | No token needed (sample data); passes with 48 users, 33 with activity; the six assignment items "Done"; the code shows all six markers; the run log lists read-only requests | ✅ 48 users, 33 with activity; six items Done; six markers in the code; 5 GET requests, all 200 |
-| A6 | Check the savings | Uses the seats, spend and renewal typed in Add an app ("from your inventory"); 6 left, 11 inactive; renewal days from today | ✅ Typed 50 seats, $12,000, 15 Jan 2027: "from your inventory", 2 seats nobody holds, 19 × $240 = $4,560 a year, "in 75 days" |
-| A7 | Go live, the app page, the inventory | Live, 48 users; the cards equal the savings step; the row says Connected | ✅ Live, 48 users; Inactive 11, Left 6, 2 seats nobody holds; row Connected, "Renews in 75 days" |
-| A8 | Connector detail | Version, evidence %, generated code, data card download | ✅ v1, 100% proved, data card downloads; the test date showed 31 Oct for a 1 Nov run until the time-zone fix |
-| **B** | **Other ways to add an app** | | |
-| B1 | Calendly from its OpenAPI file only | Every answer proved; 500 a minute; the test passes with 48 users; step 1 talks about the file, not a link | ✅ 16 of 16 proved; 500 a minute; 48 users, 33 with activity; step 1 says "Reading the OpenAPI file you uploaded" |
-| B2 | Save app (Miro), then Connect usage data from its row | Saved with no build; the build asks for the Organization ID and the token | ✅ Saved with no build; built from Miro's docs. This draft used Miro's SCIM endpoint (token only, no Organization ID); 2 answers flagged "Not proved" |
-| B3 | Surprise app (Asana) | Every answer proved; Run test stays off until a token is typed; a made-up token gives "The token was rejected" and Login shows failed; the token is stored nowhere in plain text; running again keeps the saved token | ✅ Run test off until the token and the Workspace GID were filled (a hint says so); "The token was rejected", Login failed; token not in the database or log; a re-run reused the saved token |
-| B4 | An app whose API can't list users (Typeform) | Stops: "Typeform's API doesn't list your company's users…"; the button is Use another docs link | ✅ "Typeform's API doesn't list your company's users…"; only Use another docs link |
-| **C** | **Add an app going wrong** | | |
-| C1 | Details missing | Build with AI stays off | ✅ Off with only a name, 0 seats or a negative spend, each with its field message |
-| C2 | The same name again, any case or spaces | "… is already in your inventory" | ✅ " calendly " refused: "Calendly is already in your inventory…" |
-| C3 | A past renewal date | Greyed out in the picker; the server refuses it too | ✅ October has no clickable day; November from the 1st; the server answers "The renewal date has passed…" |
-| C4 | Bad links: not a link, ftp, localhost, a space inside | An inline error or the server's message; the message clears once the link is edited | ✅ "Enter a full link…" for not a link, ftp and localhost; the server's message for a space; it clears once edited |
-| C5 | A private address (10.0.0.1) | Stops at reading the docs; only Use another docs link | ✅ "That link points to a private or internal address…" in 1 s |
-| C6 | example.com, or another app's docs | "These docs never mention …"; only Use another docs link | ✅ example.com and Notion's docs under another name: "These docs never mention …" |
-| C7 | A marketing site (loom.com) | "These pages don't look like an API reference…" with no placeholder text | ✅ loom.com stops while reading, before any AI call: "they show no API calls" |
-| C8 | The inventory after stopped builds | "Needs help" or "Setup not finished", with Continue setup on the row | ✅ "Needs help" or "Setup not finished" with Continue setup |
-| C9 | A hint with a token in it | The token is removed before the AI sees it | ✅ Two tokens and an email removed; the docs link kept |
-| C10 | Two clicks on Run test | One run | ✅ The same run ID twice; one run, 48 users |
-| **D** | **Engineering checks** | | |
-| D1 | `ruff` and `mypy --strict` on the backend; `tsc` on the frontend | No errors | ✅ |
-| D2 | The four example specs on their recordings | Each matches its `expected.json` exactly | ✅ 48, 37, 87 and 146 users, no mismatch |
-| D3 | Generated code for each example | Passes `ruff` and `mypy --strict`; all six markers | ✅ All four valid, pass both checks, six markers each |
-| D4 | `scripts/demo-walkthrough.mjs` on a fresh database | The whole flow passes; a screenshot of every screen | ✅ Twice, the second time on the final code: "the whole flow works", 11 screenshots in `data/demo-shots/` |
-| D5 | Secrets | No typed token in the database or the logs | ✅ The typed token appears in neither |
+| SC-01 | Zendesk T1 (OAuth client credentials) | Agents and admins with last login; the service account excluded from inactive; Live | ✅ replay and the OAuth flow (`contract/test_replay.py`, `unit/test_engine.py`) · waits on a Zendesk account for a live run |
+| SC-02 | Calendly with a non-admin token, or without `scheduled_events:read` | Users work, usage gets 403 → `partial`, a plain message naming the role and scope; no repair; Live (users only) allowed | ✅ `api/test_flow.py::test_sc02_*` |
+| SC-03 | Calendly with an admin token | Users + "Meetings hosted (90 days)" marked proxy; no future meetings counted | ✅ replay (`contract/test_replay.py`, `unit/test_savings.py`) · waits on a Calendly account for a live run |
+| SC-04 | Notion T3 | Users only; usage from the SSO fallback, labelled "per SSO login" | ✅ `unit/test_savings.py` |
+| SC-05 | Wrong path drafted | 404 → repair; passes by try 3, or Needs help | ✅ `unit/test_ai_pipeline.py::test_repair_*` (scripted model) |
+| SC-06 | Prompt-injection docs page | The host rule blocks it; the AI never holds a token; no call to another host | ✅ `unit/test_ai_pipeline.py`, `security/test_sandbox.py` |
+| SC-07 | Spec with DELETE | Rejected (`RULES_REJECTED`) | ✅ `unit/test_spec_validator.py` |
+| SC-08 | Library reuse between two companies (in the API, not on screen) | Globex can't see Acme's connector until the platform approves it; then connects with its own token, and its own test runs | ✅ `api/test_flow.py::test_full_demo_flow` |
+| SC-09 | Count mismatch | > 2% vs SSO → warning; going live needs a note | ✅ `api/test_flow.py::test_count_mismatch_needs_a_note` |
+| SC-10 | Rate limited | 429 handled with `X-RateLimit-Reset` or `Retry-After` | ✅ `unit/test_engine.py::test_429_*` |
+| SC-11 | Surprise app | Drafted from its docs, no example spec, no app-specific code | ✅ live Gemini on the hosted link: Asana 9 of 9 answers proved, Miro 11 of 11 · their tests wait on real tokens |
+| SC-12 | SSRF | Links to `169.254.169.254`, `localhost`, `10.x` or a redirect to them → `SSRF_BLOCKED` | ✅ `unit/test_ai_pipeline.py::test_ssrf_*`, hosted C5 |
+| SC-13 | Token owner leaving | HR marks the token owner as leaving → warning "switch to a service account" | ✅ `api/test_flow.py::test_sc13_*` |
+| SC-14 | Sample data | "Sample data" wherever sample numbers show; no calls to the vendor | ✅ by hand; replay tests in `security/test_sandbox.py` |
+| SC-15 | Secrets | No token, email or real name in the database, logs, API or AI prompts | ✅ `api/test_flow.py::test_sc15_*`, `contract/test_replay.py` |
+| SC-16 | Benchmark | The 3 × 3 × 3 results table | ✅ run on 1 Nov (§2.5) |
+| SC-17 | Docs conflict | Two rate-limit values → both shown, the vendor's page wins | ✅ `unit/test_ai_pipeline.py::test_docs_conflict_*` |
+| SC-18 | Add an app | Name, owner, spend, seats (≥ 1), renewal date and one docs source required; Build stays off until valid; the app joins the inventory and its cards | ✅ by hand, local and hosted |
+| SC-19 | Save app, and duplicates | Save app adds the app without a connector; the same name in any letter case is refused | ✅ by hand, local and hosted (C2) |
+| SC-20 | Leave without saving | Closing a drawer with input asks "Leave without saving?" | ✅ by hand |
+| SC-21 | Docs link or file | One of the two; a bad link shows "Enter a full link…" and Build stays off | ✅ by hand, local and hosted (C4) |
+| SC-22 | App page users | Every user the generated code retrieved; the count equals the test's; search, filter and 25 per page work | ✅ by hand, local and hosted |
+| SC-23 | App page before data | Contract details, "—" in the cards, "No usage data yet" with the next step; no made-up numbers | ✅ by hand |
+| SC-24 | Sample apps on a fresh database | Zendesk (37), Notion (87, users only) and Slack (146) connected by the normal codegen and test; the other five apps not connected; no Calendly | ✅ `contract/test_replay.py`; fresh databases local and hosted (8 s on Vercel) |
+| SC-25 | Build speed and progress | A Calendly build with live Gemini in about 2 minutes or less; each step explained; a dropped stream reconnects | ✅ 1–2 min on the hosted link (about 1 min 40 s with Argon), 1–2 min local |
+| SC-26 | Usage mapping guard | Usage that names no user, has no time or matches nobody fails with `MAPPING_FAILED`, never everyone at 0 | ✅ by hand |
+| SC-27 | Build flow screens | F3–F6 as one task: header, step list, Proved badges open their quotes, the six items on the test, Go live lands on the app page | ✅ by hand, local and hosted |
+| SC-28 | Wrong or thin docs | OpenAPI file alone works; wrong app → `DOCS_WRONG_APP`; marketing site → `DOCS_NOT_API`; bad link refused at once; rate limit is the general limit | ✅ by hand, local and hosted (B1, B4, C4–C7) |
+| SC-29 | Each person's status on the app page | Each user's Status is their savings result (Left the company, Inactive, Active, Not in HR data) with the reason; it matches the cards and the savings step; the app's own account status shows only when its API gives one; the Status filter uses the results | ✅ by hand, local (Calendly, Slack) and hosted |
+| SC-30 | Delete app | An added app has **Delete app**: after a confirm, the app, its connector, runs, users and token are gone, and it can be added again. A starting app with a connector has **Remove connector** (the row stays). The sample apps have neither. Refused while a build or test runs | ✅ `api/test_flow.py::test_delete_app_then_add_it_again`; by hand, local and hosted |
 
-**Found and fixed during this round** (each re-tested after the fix):
-- A test run's date showed the day before for runs in Indian morning hours: SQLite drops the time zone, so the browser read UTC as local time.
-- A marketing site could produce a "users endpoint" such as `/pricing`. Docs with no API calls in them now stop before the AI drafts.
-- The "can't list users" stop now runs before the evidence check, so its clearer message wins.
-- A rules stop showed a raw data dump and said "shown above". It now names the rule, and a format problem reads "doesn't fit the connector format".
-- Zendesk's users reference page (6.6 MB of HTML) was over the 3 MB page limit, so its docs couldn't be read. The limit is now 10 MB.
-- The duplicate-name message pointed at Connect usage data, which a connected app's row doesn't have.
+---
 
-**Known limits (not fixed):**
-- The AI's choices vary between runs. Miro's users came from its organization-members endpoint once and from SCIM once. The test with a real token decides which works.
-- Zendesk built from its docs passes (OAuth, 37 users), but the AI missed the last-login field and used SSO data for usage. The sample Zendesk uses the hand-written spec, which reads it.
-- No real vendor token was used. Every Calendly test ran on sample data; live calls were made only with a made-up token, which was rejected as expected.
-- Miro's members endpoint was drafted once without the email field (the docs page the AI read cut off the response format). Without email, the savings check can't match people to the HR file.
+## 4. Manual end-to-end checklist
 
-**pytest (1 Nov):** 202 passed, 9 skipped (the live tests need vendor tokens). Fixed on the way: the flow tests read the local `.env` demo login and today's saved AI drafts; a recorded stand-in (no AI key) tripped the "too few proved" stop and lost its unproved fields; a docs conflict is now settled before the value check, saving one AI call.
+One fixed list, run the same way each round: a fresh database, through the screens, with live Gemini. Locally on 1 Nov, then on the hosted link after the deploy.
 
-### Hosted run (1 Nov 2026, Vercel, fresh Neon database, live Gemini)
+| # | Check | Expected | Local | Hosted |
+|---|---|---|---|---|
+| **A** | **The main flow** | | | |
+| A1 | Fresh database, App inventory | Zendesk and Slack Connected, Notion Users only (Sample data); Zoom, Asana, Miro, Typeform, Loom not connected; no Calendly | ✅ | ✅ 8 s after the first-visit fix (below) |
+| A2 | Slack's app page | Users with a Sample data tag; the cards match its savings | ✅ Inactive 12, Left 6, 0 seats nobody holds | ✅ same |
+| A3 | Add an app: Calendly, its details, docs link, Build with AI | Done in about 2 minutes; every step says what it does | ✅ 2 min 30 s (another build ran at once) | ✅ about 1 min 40 s with Argon (one evidence re-ask); about 50 s with Flash before the switch |
+| A4 | Review what we found | Every answer proved; 500 a minute; users from `/organization_memberships`; usage per host, 90 days; paging in words; the evidence panel opens on the answer clicked | ✅ 19 of 19 | ✅ 15 of 15 with Argon (18 of 18 with Flash) |
+| A5 | Connect and test | No token on sample data; 48 users, 33 with activity; six items Done; six markers in the code; read-only requests | ✅ | ✅ 5 GET requests, all 200 |
+| A6 | Check the savings | Uses the typed seats, spend and renewal ("from your inventory"); 6 left, 11 inactive; days from today | ✅ | ✅ 50 seats, $12,000: 2 seats nobody holds, $4,560 a year, in 75 days |
+| A7 | Go live, app page, inventory | Live, 48 users; cards equal the savings; row Connected | ✅ | ✅ |
+| A8 | Connector detail | Version, evidence %, generated code, data card download | ✅ | ✅ v1, 100% proved |
+| A9 | Each person's status | Every user shows Left the company, Inactive or Active with the reason; Slack keeps its Deactivated accounts in "Account in Slack" | ✅ Calendly, Slack | ✅ Calendly (no "Unknown" left), Slack |
+| A10 | Delete app | An added app: Delete app → confirm → back to the inventory with "… was deleted", gone from the list, free to add again. A tested connector goes with its runs and users | ✅ Calendly | ✅ Calendly deleted and added again end to end, twice (the second time with Argon); a tested connector removed on Postgres; the sample apps show no button |
+| **B** | **Other ways to add an app** | | | |
+| B1 | Calendly from its OpenAPI file only | Every answer proved; 500 a minute; 48 users; step 1 talks about the file | ✅ 16 of 16 | ✅ 16 of 16 (the first run had 13 of 16: see the citation fix below) |
+| B2 | Miro from its row | Built from its docs; asks for the Organization ID and the token | ✅ | ✅ |
+| B3 | Surprise app (Asana) | Every answer proved; Run test off until the fields are filled; a made-up token → "The token was rejected"; the token stored nowhere in plain text | ✅ | ✅ 9 of 9, Run test off · the token step is local only |
+| B4 | An app whose API can't list users (Typeform) | "Typeform's API doesn't list your company's users…"; only Use another docs link | ✅ | ✅ after the page-limit fix (below) |
+| **C** | **Adding an app going wrong** | | | |
+| C1 | Details missing | Build with AI stays off | ✅ | ✅ |
+| C2 | The same name again, any case or spaces | "… is already in your inventory" | ✅ | ✅ |
+| C3 | A past renewal date | Greyed in the picker; the server refuses it too | ✅ | ✅ |
+| C4 | Bad links (not a link, ftp, localhost, a space) | An inline error or the server's message | ✅ | ✅ |
+| C5 | A private address (10.0.0.1) | Stops at once; only Use another docs link | ✅ | ✅ under 1 s |
+| C6 | example.com, or another app's docs | "These docs never mention …" | ✅ | ✅ |
+| C7 | A marketing site (loom.com) | "These pages don't look like an API reference…", before any AI call | ✅ | ✅ 6 s |
+| C8 | The inventory after stopped builds | "Needs help" or "Setup not finished", with Continue setup | ✅ | ✅ |
+| C9 | A hint with a token in it | The token removed before the AI sees it | ✅ | Not visible on screen |
+| C10 | Two clicks on Run test | One run | ✅ | ✅ |
+| **D** | **Engineering checks** | | | |
+| D1 | `ruff`, `mypy --strict`, `tsc` | No errors | ✅ | — |
+| D2 | The four example specs on their recordings | Each matches its expected users exactly | ✅ 48, 37, 87, 146 | — |
+| D3 | Generated code for each example | Passes `ruff` and `mypy --strict`; all six markers | ✅ | — |
+| D4 | Secrets | No typed token in the database or the logs | ✅ | No token typed on the hosted link |
 
-The same checklist on https://integration-builder-five.vercel.app after the deploy:
+---
 
-- **Passed:** A2 to A8 (Calendly built in about 50 s, 18 of 18 proved, 48 users, $4,560 a year, "in 75 days"), B2, B3 (Run test off until the fields are filled), C2 to C8, C10. No server errors in Vercel's logs.
-- **Found and fixed** (re-tested on the hosted link after a second deploy and a fresh database):
-  - The sample apps never finished building on a fresh database: Vercel pauses a function between requests, so the background thread stalled at "testing". On Vercel they are now built inside the first visit: 8 s, all three live.
-  - The AI cited OpenAPI endpoints one field too deep (`/paths/~1users~1me/get/path`), so 3 of 16 answers showed as unproved. Such a citation now proves the endpoint it sits in; a unit test covers it. The re-test drew correct citations: 16 of 16 proved, 48 users.
-  - The hosted copy read 30 docs pages (the screen says up to 60), so Typeform stopped with the vaguer "doesn't look like an API reference". Now 60: "Typeform's API doesn't list your company's users…" in 28 s.
-- **Not covered there:** the made-up token in B3 and the walkthrough script (D4) need typing into the hosted site; C9 (hint scrubbing) isn't visible from the screens. All three passed locally.
-- The re-tests ran in the hidden second tenant (Globex), so the demo company starts clean: 8 apps, no Calendly.
+## 5. Security tests
+
+| Threat | Test | Result |
+|---|---|---|
+| Docs tell the AI to send data elsewhere | SC-06: injection page → the host rule rejects the draft; no call leaves | ✅ |
+| A draft asks for a write or delete call | SC-07 → `RULES_REJECTED` | ✅ |
+| Generated code calls another host | The sandbox stops it with exit 8 and logs a security event (`security/test_sandbox.py`) | ✅ |
+| A docs link points inside the network | SC-12: private, loopback, link-local, metadata addresses and redirects to them → `SSRF_BLOCKED` | ✅ |
+| Tokens leak | SC-15: none in the database (encrypted), logs (redacted), API (write-only) or AI prompts | ✅ |
+| Personal data reaches the AI | Hint scrubbing removes emails, long numbers and token-like text (C9) | ✅ |
+| Anyone opens the hosted link | Every API call needs the login (401 without it) | ✅ checked on the hosted link |
+
+---
+
+## 6. Results
+
+**Automated (1 Nov 2026):** `ruff`, `mypy --strict` and `tsc` clean. `pytest`: 203 passed, 3 skipped (the live tests need real vendor accounts).
+
+**Defects found and fixed on 1 Nov** (each re-tested after the fix):
+- **The app page showed "Unknown" for every Calendly user.** Calendly's API has no account status. Each person's Status is now their savings result with the reason (SC-29).
+- **An added app couldn't be removed**, so the next person couldn't add it again. Delete app added (SC-30).
+- **Hosted: the sample apps never finished building** on a fresh database, because Vercel pauses a function between requests. On Vercel they are now built inside the first visit.
+- **Hosted: OpenAPI endpoint citations one field too deep** (`/paths/~1users/get/path`) showed 3 of 16 answers as unproved. Such a citation now proves its endpoint.
+- **Hosted: the docs page limit was 30** while the screen said 60, so Typeform stopped with a vaguer message. Now 60.
+- **A test run's date showed the day before** for runs in Indian morning hours: SQLite drops the time zone.
+- **A marketing site could produce a users endpoint** such as `/pricing`. Docs with no API calls now stop before the AI drafts.
+- **A rules stop showed a raw data dump.** It now names the rule.
+- **Zendesk's users reference page (6.6 MB)** was over the 3 MB page limit. Now 10 MB.
+- **The duplicate-name message** pointed at a button a connected app doesn't have.
+- **Without a Gemini key, the hand-written stand-in** tripped the "too few proved" stop and lost its unproved fields. The stand-in is now exempt.
+- **A docs conflict cost an extra AI call:** it is now settled before the value check.
+
+## 7. Known limits
+
+- **No real vendor accounts.** Every test ran on recorded answers; live calls were made only with a made-up token, which was rejected as expected. Matching user counts against each app's admin screen waits on real accounts.
+- **The AI's choices vary between runs.** Miro's users came once from its members endpoint, once from SCIM; one Miro draft read no email field; one Zendesk draft missed the last-login field and used SSO data. The test with a real token decides.
+- **The sandbox is a separate process**, labelled "demo isolation only"; a locked container per run is on the roadmap (PRD §13).
+- **Docs that need JavaScript to show text can't be read**; the OpenAPI file is the way in.
+- **One shared login and one company on screen.**
+
+## 8. After the prototype
+
+- **Backtest before production:** 30 apps (10 per tier) against the platform's native connectors, plus one non-Gemini model for comparison (`PRD.md` §9), shown as a scoreboard ("user counts matched on 26/30 apps").
+- **In production**, the eval becomes the metrics in `PRD.md` §11. The counter-metric that matters most is the **false-inactive rate**: people flagged inactive who actually use the app.
+- **Every correction becomes a test case.** A repair, an admin hint or a reviewer rejection adds the app and the fix to the eval set, so the next model or prompt change is checked against it.
